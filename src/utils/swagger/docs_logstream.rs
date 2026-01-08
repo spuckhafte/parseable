@@ -124,9 +124,17 @@ macro_rules! put_logstream {
             summary = "Create or update stream",
             description = "Creates a new log stream with the specified schema or updates an existing stream's configuration. Schema and settings are provided in the request body as JSON. Supports custom time partitioning and retention policies.",
             params(
-                ("logstream" = String, Path, description = "Name of the log stream to create or update")
+                ("logstream" = String, Path, description = "Name of the log stream to create or update"),
+                ("X-P-Time-Partition" = Option<String>, Header, description = "Time partition field name (optional, e.g., 'timestamp'). Defines which field to use for time-based partitioning"),
+                ("X-P-Time-Partition-Limit" = Option<String>, Header, description = "Time partition limit (optional, e.g., '1d', '1h'). Sets the granularity of time partitions"),
+                ("X-P-Custom-Partition" = Option<String>, Header, description = "Custom partition field (optional). Additional field to partition data by"),
+                ("X-P-Static-Schema-Flag" = Option<String>, Header, description = "Enable static schema mode (optional, set to 'true'). When enabled, schema changes are not allowed"),
+                ("X-P-Update-Stream" = Option<String>, Header, description = "Update existing stream (optional, set to 'true'). Allows modifying an existing stream's configuration"),
+                ("X-P-Stream-Type" = Option<String>, Header, description = "Stream type (optional, e.g., 'user-defined', 'internal'). Defaults to 'user-defined'"),
+                ("X-P-Log-Source" = Option<String>, Header, description = "Log source identifier (optional, e.g., 'json', 'syslog', 'otel-logs'). Defaults to 'json'"),
+                ("X-P-Telemetry-Type" = Option<String>, Header, description = "Telemetry type (optional, e.g., 'logs', 'metrics', 'traces'). Defaults to 'logs'")
             ),
-            request_body = serde_json::Value,
+            request_body(content = String, content_type = "application/json"),
             responses(
                 (status = 200, description = "Stream created or updated successfully"),
                 (status = 400, description = "Invalid schema or configuration"),
