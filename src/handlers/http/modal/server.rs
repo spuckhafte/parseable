@@ -38,6 +38,8 @@ use crate::migration;
 use crate::storage;
 use crate::sync;
 use crate::sync::sync_start;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use actix_web::Resource;
 use actix_web::Scope;
@@ -51,6 +53,7 @@ use bytes::Bytes;
 use tokio::sync::oneshot;
 
 use crate::{
+    ApiDoc,
     handlers::http::{
         self, MAX_EVENT_PAYLOAD_SIZE, ingest, llm, logstream,
         middleware::{DisAllowRootUser, RouteExt},
@@ -110,6 +113,12 @@ impl ParseableServer for Server {
             .service(Self::get_ingest_otel_factory().wrap(from_fn(
                 resource_check::check_resource_utilization_middleware,
             )))
+
+            // api docs with swagger
+            .service(
+                SwaggerUi::new("/docs/{_:.*}")
+                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
+            )
             .service(Self::get_generated());
     }
 

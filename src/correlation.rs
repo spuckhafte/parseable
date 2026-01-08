@@ -186,7 +186,7 @@ impl Correlations {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum CorrelationVersion {
     #[default]
@@ -196,7 +196,7 @@ pub enum CorrelationVersion {
 type CorrelationId = String;
 type UserId = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CorrelationConfig {
     #[serde(default)]
@@ -363,21 +363,21 @@ impl actix_web::ResponseError for CorrelationError {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TableConfig {
     pub selected_fields: Vec<String>,
     pub table_name: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JoinCondition {
     pub table_name: String,
     pub field: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JoinConfig {
     pub join_conditions: Vec<JoinCondition>,

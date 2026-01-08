@@ -18,6 +18,9 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::{
+    ingest_events, ingest_otel_logs, ingest_otel_metrics, ingest_otel_traces, ingest_to_stream,
+};
 use actix_web::web::{self, Json, Path};
 use actix_web::{HttpRequest, HttpResponse, http::header::ContentType};
 use arrow_array::RecordBatch;
@@ -50,9 +53,10 @@ use super::modal::utils::ingest_utils::{flatten_and_push_logs, get_custom_fields
 use super::users::dashboards::DashboardError;
 use super::users::filters::FiltersError;
 
-// Handler for POST /api/v1/ingest
-// ingests events by extracting stream name from header
-// creates if stream does not exist
+ingest_events! {
+/// Ingest events
+///
+/// Ingests events by extracting stream name from header. Creates stream if it doesn't exist.
 pub async fn ingest(
     req: HttpRequest,
     Json(json): Json<StrictValue>,
@@ -128,6 +132,7 @@ pub async fn ingest(
     flatten_and_push_logs(json, &stream_name, &log_source, &p_custom_fields, None).await?;
 
     Ok(HttpResponse::Ok().finish())
+}
 }
 
 pub async fn ingest_internal_stream(stream_name: String, body: Bytes) -> Result<(), PostError> {
@@ -274,9 +279,10 @@ async fn process_otel_content(
     Ok(())
 }
 
-// Handler for POST /v1/logs to ingest OTEL logs
-// ingests events by extracting stream name from header
-// creates if stream does not exist
+ingest_otel_logs! {
+/// Ingest OTEL logs
+///
+/// Ingests OpenTelemetry logs in JSON or protobuf format.
 pub async fn handle_otel_logs_ingestion(
     req: HttpRequest,
     body: web::Bytes,
@@ -293,10 +299,12 @@ pub async fn handle_otel_logs_ingestion(
 
     Ok(HttpResponse::Ok().finish())
 }
+}
 
-// Handler for POST /v1/metrics to ingest OTEL metrics
-// ingests events by extracting stream name from header
-// creates if stream does not exist
+ingest_otel_metrics! {
+/// Ingest OTEL metrics
+///
+/// Ingests OpenTelemetry metrics in JSON or protobuf format.
 pub async fn handle_otel_metrics_ingestion(
     req: HttpRequest,
     body: web::Bytes,
@@ -313,10 +321,12 @@ pub async fn handle_otel_metrics_ingestion(
 
     Ok(HttpResponse::Ok().finish())
 }
+}
 
-// Handler for POST /v1/traces to ingest OTEL traces
-// ingests events by extracting stream name from header
-// creates if stream does not exist
+ingest_otel_traces! {
+/// Ingest OTEL traces
+///
+/// Ingests OpenTelemetry traces in JSON or protobuf format.
 pub async fn handle_otel_traces_ingestion(
     req: HttpRequest,
     body: web::Bytes,
@@ -333,10 +343,12 @@ pub async fn handle_otel_traces_ingestion(
 
     Ok(HttpResponse::Ok().finish())
 }
+}
 
-// Handler for POST /api/v1/logstream/{logstream}
-// only ingests events into the specified logstream
-// fails if the logstream does not exist
+ingest_to_stream! {
+/// Ingest to specific stream
+///
+/// Ingests events into a specific log stream. Stream must already exist.
 pub async fn post_event(
     req: HttpRequest,
     stream_name: Path<String>,
@@ -399,6 +411,7 @@ pub async fn post_event(
     flatten_and_push_logs(json, &stream_name, &log_source, &p_custom_fields, None).await?;
 
     Ok(HttpResponse::Ok().finish())
+}
 }
 
 pub async fn push_logs_unchecked(

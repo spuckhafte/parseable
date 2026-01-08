@@ -32,7 +32,7 @@ pub enum AlertTask {
     Delete(Ulid),
 }
 
-#[derive(Default, Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Default, Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AlertVersion {
     V1,
@@ -61,6 +61,7 @@ impl From<&str> for AlertVersion {
     PartialOrd,
     Eq,
     Ord,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "camelCase")]
 pub enum Severity {
@@ -82,7 +83,7 @@ impl Display for Severity {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum LogicalOperator {
     And,
@@ -98,7 +99,7 @@ impl Display for LogicalOperator {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum AlertType {
     Threshold,
@@ -116,7 +117,7 @@ impl Display for AlertType {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum AlertOperator {
     #[serde(rename = ">")]
@@ -146,7 +147,9 @@ impl Display for AlertOperator {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, FromStr, PartialEq, Eq)]
+#[derive(
+    Debug, serde::Serialize, serde::Deserialize, Clone, FromStr, PartialEq, Eq, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum WhereConfigOperator {
     #[serde(rename = "=")]
@@ -211,7 +214,7 @@ impl Display for WhereConfigOperator {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum AggregateFunction {
     Avg,
@@ -235,7 +238,7 @@ impl Display for AggregateFunction {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum EvalConfig {
     RollingWindow(RollingWindow),
@@ -253,6 +256,7 @@ pub enum EvalConfig {
     Eq,
     PartialOrd,
     Ord,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "camelCase")]
 pub enum AlertState {
@@ -273,7 +277,9 @@ impl Display for AlertState {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Default)]
+#[derive(
+    Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Default, utoipa::ToSchema,
+)]
 #[serde(rename_all = "camelCase")]
 pub enum NotificationState {
     #[default]

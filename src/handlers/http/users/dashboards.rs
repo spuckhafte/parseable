@@ -19,9 +19,12 @@
 use std::collections::HashMap;
 
 use crate::{
+    create_dashboard, get_dashboard_by_id,
     handlers::http::rbac::RBACError,
+    list_dashboards,
     metastore::MetastoreError,
     storage::ObjectStorageError,
+    update_dashboard,
     users::dashboards::{DASHBOARDS, Dashboard, Tile, validate_dashboard_id},
     utils::{get_hash, get_user_from_request, is_admin},
 };
@@ -33,6 +36,10 @@ use actix_web::{
 use http::StatusCode;
 use serde_json::Error as SerdeError;
 
+list_dashboards! {
+/// List dashboards
+///
+/// Returns dashboards accessible by the current user.
 pub async fn list_dashboards(req: HttpRequest) -> Result<impl Responder, DashboardError> {
     let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
         .map_err(|_| DashboardError::InvalidQueryParameter)?;
@@ -71,7 +78,12 @@ pub async fn list_dashboards(req: HttpRequest) -> Result<impl Responder, Dashboa
 
     Ok((web::Json(dashboard_summaries), StatusCode::OK))
 }
+}
 
+get_dashboard_by_id! {
+/// Get dashboard
+///
+/// Retrieves a specific dashboard by ID.
 pub async fn get_dashboard(dashboard_id: Path<String>) -> Result<impl Responder, DashboardError> {
     let dashboard_id = validate_dashboard_id(dashboard_id.into_inner())?;
 
@@ -82,7 +94,12 @@ pub async fn get_dashboard(dashboard_id: Path<String>) -> Result<impl Responder,
 
     Ok((web::Json(dashboard), StatusCode::OK))
 }
+}
 
+create_dashboard! {
+/// Create dashboard
+///
+/// Creates a new dashboard with specified configuration.
 pub async fn create_dashboard(
     req: HttpRequest,
     Json(mut dashboard): Json<Dashboard>,
@@ -96,7 +113,12 @@ pub async fn create_dashboard(
     DASHBOARDS.create(&user_id, &mut dashboard).await?;
     Ok((web::Json(dashboard), StatusCode::OK))
 }
+}
 
+update_dashboard! {
+/// Update dashboard
+///
+/// Updates an existing dashboard's configuration.
 pub async fn update_dashboard(
     req: HttpRequest,
     dashboard_id: Path<String>,
@@ -184,6 +206,7 @@ pub async fn update_dashboard(
         .await?;
 
     Ok((web::Json(final_dashboard), StatusCode::OK))
+}
 }
 
 pub async fn delete_dashboard(

@@ -32,7 +32,7 @@ use crate::{
 
 pub static FILTERS: Lazy<Filters> = Lazy::new(Filters::default);
 pub const CURRENT_FILTER_VERSION: &str = "v2";
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, utoipa::ToSchema)]
 pub struct Filter {
     pub version: Option<String>,
     pub user_id: Option<String>,
@@ -61,14 +61,14 @@ impl MetastoreObject for Filter {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, utoipa::ToSchema)]
 pub struct FilterQuery {
     pub filter_type: FilterType,
     pub filter_query: Option<String>,
     pub filter_builder: Option<FilterBuilder>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum FilterType {
     Filter,
@@ -86,21 +86,21 @@ impl FilterType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, utoipa::ToSchema)]
 pub struct FilterBuilder {
     pub id: String,
     pub combinator: String,
     pub rules: Vec<FilterRules>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, utoipa::ToSchema)]
 pub struct FilterRules {
     pub id: String,
     pub combinator: String,
     pub rules: Vec<Rules>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, utoipa::ToSchema)]
 pub struct Rules {
     pub id: String,
     pub field: String,

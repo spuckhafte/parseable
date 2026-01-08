@@ -51,6 +51,10 @@ use crate::{
 };
 const STATS_DATE_QUERY_PARAM: &str = "date";
 
+/// Delete a log stream from querier
+///
+/// Removes the stream from storage, deletes local data, removes hot tier if configured,
+/// and syncs deletion with all ingestors.
 pub async fn delete(stream_name: Path<String>) -> Result<impl Responder, StreamError> {
     let stream_name = stream_name.into_inner();
 
@@ -111,6 +115,10 @@ pub async fn delete(stream_name: Path<String>) -> Result<impl Responder, StreamE
     Ok((format!("log stream {stream_name} deleted"), StatusCode::OK))
 }
 
+/// Create or update a log stream on querier
+///
+/// Creates a new log stream or updates an existing one, synchronizing the change
+/// with all ingestors in the cluster.
 pub async fn put_stream(
     req: HttpRequest,
     stream_name: Path<String>,
@@ -137,6 +145,10 @@ pub async fn put_stream(
     }
 }
 
+/// Get stream statistics
+///
+/// Retrieves current or historical statistics for a log stream, aggregating data
+/// from both querier and ingestor nodes.
 pub async fn get_stats(
     req: HttpRequest,
     stream_name: Path<String>,

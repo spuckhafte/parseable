@@ -86,22 +86,34 @@ pub fn init_scheduler() {
     info!("Scheduler is initialized")
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
 #[serde(try_from = "Vec<TaskView>")]
 #[serde(into = "Vec<TaskView>")]
 pub struct Retention {
     tasks: Vec<Task>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct Task {
     description: String,
     action: Action,
+    #[schema(value_type = u32)]
     days: NonZeroU32,
 }
 
 #[derive(
-    Debug, Clone, Copy, PartialEq, Eq, Hash, Display, serde::Serialize, serde::Deserialize,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Hash,
+    Display,
+    serde::Serialize,
+    serde::Deserialize,
+    utoipa::ToSchema,
 )]
 #[serde(rename_all = "lowercase")]
 enum Action {

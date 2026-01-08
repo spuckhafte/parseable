@@ -29,11 +29,13 @@ use bytes::Bytes;
 use serde_json::Value;
 use tokio::sync::OnceCell;
 use tokio::sync::oneshot;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use crate::handlers::http::modal::NodeType;
 use crate::sync::sync_start;
 use crate::{
-    Server, analytics,
+    ApiDoc, Server, analytics,
     handlers::{
         airplane,
         http::{
@@ -82,7 +84,13 @@ impl ParseableServer for IngestServer {
             )
             .service(Server::get_ingest_otel_factory().wrap(from_fn(
                 resource_check::check_resource_utilization_middleware,
-            )));
+            )))
+
+            // api docs with swagger
+            .service(
+                SwaggerUi::new("/docs/{_:.*}")
+                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
+            );
     }
 
     async fn load_metadata(&self) -> anyhow::Result<Option<Bytes>> {
@@ -206,7 +214,7 @@ impl IngestServer {
                     ),
             )
             .service(
-                web::resource("/{userid}/role/sync/remove")
+                web::resource("/{userid}/role/sync/rz                                                        emove")
                     // PATCH /user/{userid}/role/sync/remove => Remove roles from a user
                     .route(
                         web::patch()

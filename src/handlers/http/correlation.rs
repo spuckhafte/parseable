@@ -27,6 +27,22 @@ use crate::utils::{get_hash, get_user_from_request, user_auth_for_datasets};
 
 use crate::correlation::{CORRELATIONS, CorrelationConfig, CorrelationError};
 
+/// List correlations
+///
+/// Returns all correlations accessible by the current user.
+#[utoipa::path(
+    get,
+    path = "/api/v1/correlations",
+    tag = "correlations",
+    summary = "List correlations",
+    description = "Retrieves all correlation configurations created by or shared with the current user.",
+    responses(
+        (status = 200, description = "List of correlations", body = Vec<CorrelationConfig>)
+    ),
+    security(
+        ("authorization" = [])
+    )
+)]
 pub async fn list(req: HttpRequest) -> Result<impl Responder, CorrelationError> {
     let session_key = extract_session_key_from_req(&req)
         .map_err(|err| CorrelationError::AnyhowError(Error::msg(err.to_string())))?;
@@ -36,6 +52,27 @@ pub async fn list(req: HttpRequest) -> Result<impl Responder, CorrelationError> 
     Ok(web::Json(correlations))
 }
 
+/// Get correlation
+///
+/// Retrieves a specific correlation by ID.
+#[utoipa::path(
+    get,
+    path = "/api/v1/correlations/{correlation_id}",
+    tag = "correlations",
+    summary = "Get correlation",
+    description = "Returns complete correlation configuration including table joins and filters. Validates user has permissions for all referenced streams.",
+    params(
+        ("correlation_id" = String, Path, description = "Correlation ID")
+    ),
+    responses(
+        (status = 200, description = "Correlation details", body = CorrelationConfig),
+        (status = 403, description = "Insufficient permissions for referenced streams"),
+        (status = 404, description = "Correlation not found")
+    ),
+    security(
+        ("authorization" = [])
+    )
+)]
 pub async fn get(
     req: HttpRequest,
     correlation_id: Path<String>,
@@ -59,6 +96,25 @@ pub async fn get(
     Ok(web::Json(correlation))
 }
 
+/// Create correlation
+///
+/// Creates a new correlation between multiple streams.
+#[utoipa::path(
+    post,
+    path = "/api/v1/correlations",
+    tag = "correlations",
+    summary = "Create correlation",
+    description = "Creates a new correlation configuration that joins multiple log streams. Validates user has permissions for all referenced streams.",
+    request_body = CorrelationConfig,
+    responses(
+        (status = 200, description = "Correlation created successfully", body = CorrelationConfig),
+        (status = 400, description = "Invalid correlation configuration"),
+        (status = 403, description = "Insufficient permissions for referenced streams")
+    ),
+    security(
+        ("authorization" = [])
+    )
+)]
 pub async fn post(
     req: HttpRequest,
     Json(mut correlation): Json<CorrelationConfig>,
@@ -75,6 +131,29 @@ pub async fn post(
     Ok(web::Json(correlation))
 }
 
+/// Modify correlation
+///
+/// Updates an existing correlation's configuration.
+#[utoipa::path(
+    put,
+    path = "/api/v1/correlations/{correlation_id}",
+    tag = "correlations",
+    summary = "Modify correlation",
+    description = "Updates correlation configuration including table joins and filters. Validates user has permissions for all referenced streams.",
+    params(
+        ("correlation_id" = String, Path, description = "Correlation ID")
+    ),
+    request_body = CorrelationConfig,
+    responses(
+        (status = 200, description = "Correlation updated successfully", body = CorrelationConfig),
+        (status = 400, description = "Invalid correlation configuration"),
+        (status = 403, description = "Insufficient permissions"),
+        (status = 404, description = "Correlation not found")
+    ),
+    security(
+        ("authorization" = [])
+    )
+)]
 pub async fn modify(
     req: HttpRequest,
     correlation_id: Path<String>,
@@ -93,6 +172,27 @@ pub async fn modify(
     Ok(web::Json(correlation))
 }
 
+/// Delete correlation
+///
+/// Permanently deletes a correlation.
+#[utoipa::path(
+    delete,
+    path = "/api/v1/correlations/{correlation_id}",
+    tag = "correlations",
+    summary = "Delete correlation",
+    description = "Removes a correlation configuration from the system.",
+    params(
+        ("correlation_id" = String, Path, description = "Correlation ID")
+    ),
+    responses(
+        (status = 200, description = "Correlation deleted successfully"),
+        (status = 403, description = "Insufficient permissions"),
+        (status = 404, description = "Correlation not found")
+    ),
+    security(
+        ("authorization" = [])
+    )
+)]
 pub async fn delete(
     req: HttpRequest,
     correlation_id: Path<String>,

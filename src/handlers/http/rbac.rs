@@ -19,6 +19,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
+    add_user_roles, create_user, delete_user, get_user_by_name, get_user_roles, list_users,
+    list_users_detailed,
     rbac::{
         self, Users,
         map::{read_user_groups, roles, users},
@@ -26,6 +28,7 @@ use crate::{
         user::{self, UserType},
         utils::to_prism_user,
     },
+    remove_user_roles, reset_user_password,
     storage::ObjectStorageError,
     validator::{self, error::UsernameValidationError},
 };
@@ -65,22 +68,31 @@ impl From<&user::User> for User {
     }
 }
 
-// Handler for GET /api/v1/user
-// returns list of all registered users
+list_users! {
+/// List all users
+///
+/// Returns a list of all registered users with their ID and authentication method.
 pub async fn list_users() -> impl Responder {
     web::Json(Users.collect_user::<User>())
 }
+}
 
-/// Handler for GET /api/v1/users
-/// returns list of all registered users along with their roles and other info
+list_users_detailed! {
+/// List all users with detailed information
+///
+/// Returns comprehensive user information including roles and group memberships.
 pub async fn list_users_prism() -> impl Responder {
     // get all users
     let prism_users = rbac::map::users().values().map(to_prism_user).collect_vec();
 
     web::Json(prism_users)
 }
+}
 
-/// Function for GET /users/{username}
+get_user_by_name! {
+/// Get user details
+///
+/// Returns detailed information for a specific user including roles and permissions.
 pub async fn get_prism_user(username: Path<String>) -> Result<impl Responder, RBACError> {
     let username = username.into_inner();
     // First check if the user exists
@@ -93,9 +105,12 @@ pub async fn get_prism_user(username: Path<String>) -> Result<impl Responder, RB
         Err(RBACError::UserDoesNotExist)
     }
 }
+}
 
-// Handler for POST /api/v1/user/{username}
-// Creates a new user by username if it does not exists
+create_user! {
+/// Create new user
+///
+/// Creates a new user with optional role assignments. Returns a generated password for native users.
 pub async fn post_user(
     username: web::Path<String>,
     body: Option<web::Json<serde_json::Value>>,
@@ -146,9 +161,12 @@ pub async fn post_user(
 
     Ok(password)
 }
+}
 
-// Handler for POST /api/v1/user/{username}/generate-new-password
-// Resets password for the user to a newly generated one and returns it
+reset_user_password! {
+/// Generate new password
+///
+/// Generates and returns a new password for an existing user.
 pub async fn post_gen_password(username: web::Path<String>) -> Result<impl Responder, RBACError> {
     let username = username.into_inner();
     let mut new_password = String::default();
@@ -177,9 +195,12 @@ pub async fn post_gen_password(username: web::Path<String>) -> Result<impl Respo
 
     Ok(new_password)
 }
+}
 
-// Handler for GET /api/v1/user/{userid}/role
-// returns role for a user if that user exists
+get_user_roles! {
+/// Get user roles
+///
+/// Returns all roles assigned to a user, both directly and through group memberships.
 pub async fn get_role(userid: web::Path<String>) -> Result<impl Responder, RBACError> {
     let userid = userid.into_inner();
     if !Users.contains(&userid) {
@@ -217,8 +238,12 @@ pub async fn get_role(userid: web::Path<String>) -> Result<impl Responder, RBACE
     };
     Ok(web::Json(res))
 }
+}
 
-// Handler for DELETE /api/v1/user/delete/{userid}
+delete_user! {
+/// Delete user
+///
+/// Permanently deletes a user account. User must not be a member of any user groups.
 pub async fn delete_user(userid: web::Path<String>) -> Result<impl Responder, RBACError> {
     let userid = userid.into_inner();
     let _guard = UPDATE_LOCK.lock().await;
@@ -249,8 +274,12 @@ pub async fn delete_user(userid: web::Path<String>) -> Result<impl Responder, RB
     Users.delete_user(&userid);
     Ok(HttpResponse::Ok().json(format!("deleted user: {username}")))
 }
+}
 
-// Handler PATCH /user/{userid}/role/add => Add roles to a user
+add_user_roles! {
+/// Add roles to user
+///
+/// Adds one or more roles to an existing user account.
 pub async fn add_roles_to_user(
     userid: web::Path<String>,
     roles_to_add: web::Json<HashSet<String>>,
@@ -301,8 +330,12 @@ pub async fn add_roles_to_user(
 
     Ok(HttpResponse::Ok().json(format!("Roles updated successfully for {username}")))
 }
+}
 
-// Handler PATCH /user/{userid}/role/remove => Remove roles from a user
+remove_user_roles! {
+/// Remove roles from user
+///
+/// Removes one or more roles from an existing user account.
 pub async fn remove_roles_from_user(
     userid: web::Path<String>,
     roles_to_remove: web::Json<HashSet<String>>,
@@ -364,6 +397,7 @@ pub async fn remove_roles_from_user(
     Users.remove_roles(&userid.clone(), roles_to_remove);
 
     Ok(HttpResponse::Ok().json(format!("Roles updated successfully for {username}")))
+}
 }
 
 #[derive(Debug, Serialize)]

@@ -27,7 +27,10 @@ use crate::{
         alert_types::ThresholdAlert,
         target::Retry,
     },
+    create_alert, delete_alert, disable_alert, enable_alert, get_alert_by_id, list_alert_tags,
+    list_alerts,
     metastore::metastore_traits::MetastoreObject,
+    modify_alert,
     parseable::PARSEABLE,
     utils::{actix::extract_session_key_from_req, user_auth_for_query},
 };
@@ -203,6 +206,7 @@ fn paginate_alerts(
         .collect()
 }
 
+list_alerts! {
 // GET /alerts
 /// User needs at least a read access to the stream(s) that is being referenced in an alert
 /// Read all alerts then return alerts which satisfy the condition
@@ -242,8 +246,12 @@ pub async fn list(req: HttpRequest) -> Result<impl Responder, AlertError> {
 
     Ok(web::Json(paginated_alerts))
 }
+}
 
-// POST /alerts
+create_alert! {
+/// Create alert
+///
+/// Creates a new alert with specified query, thresholds, and notification configuration.
 pub async fn post(
     req: HttpRequest,
     Json(alert): Json<AlertRequest>,
@@ -326,8 +334,12 @@ pub async fn post(
 
     Ok(web::Json(alert.to_alert_config().to_response()))
 }
+}
 
-// GET /alerts/{alert_id}
+get_alert_by_id! {
+/// Get alert details
+///
+/// Retrieves complete configuration for a specific alert.
 pub async fn get(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
     let session_key = extract_session_key_from_req(&req)?;
     let alert_id = alert_id.into_inner();
@@ -345,9 +357,12 @@ pub async fn get(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responde
 
     Ok(web::Json(alert.to_alert_config().to_response()))
 }
+}
 
-// DELETE /alerts/{alert_id}
-/// Deletion should happen from disk, sheduled tasks, then memory
+delete_alert! {
+/// Delete alert
+///
+/// Permanently deletes an alert and stops its monitoring task.
 pub async fn delete(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
     let session_key = extract_session_key_from_req(&req)?;
     let alert_id = alert_id.into_inner();
@@ -380,6 +395,7 @@ pub async fn delete(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Respo
     alerts.delete_task(alert_id).await?;
 
     Ok(format!("Deleted alert with ID- {alert_id}"))
+}
 }
 
 // PATCH /alerts/{alert_id}/update_notification_state
@@ -440,9 +456,10 @@ pub async fn update_notification_state(
     Ok(web::Json(alert.to_alert_config().to_response()))
 }
 
-// PATCH /alerts/{alert_id}/disable
-/// first save on disk, then in memory
-/// then modify scheduled task
+disable_alert! {
+/// Disable alert
+///
+/// Disables an alert temporarily without deleting it.
 pub async fn disable_alert(
     req: HttpRequest,
     alert_id: Path<Ulid>,
@@ -469,10 +486,12 @@ pub async fn disable_alert(
 
     Ok(web::Json(alert.to_alert_config().to_response()))
 }
+}
 
-// PATCH /alerts/{alert_id}/enable
-/// first save on disk, then in memory
-/// then modify scheduled task
+enable_alert! {
+/// Enable alert
+///
+/// Re-enables a previously disabled alert.
 pub async fn enable_alert(
     req: HttpRequest,
     alert_id: Path<Ulid>,
@@ -507,10 +526,12 @@ pub async fn enable_alert(
 
     Ok(web::Json(alert.to_alert_config().to_response()))
 }
+}
 
-// PUT /alerts/{alert_id}
-/// first save on disk, then in memory
-/// then modify scheduled task
+modify_alert! {
+/// Modify alert
+///
+/// Updates an existing alert's configuration.
 pub async fn modify_alert(
     req: HttpRequest,
     alert_id: Path<Ulid>,
@@ -594,8 +615,29 @@ pub async fn modify_alert(
     let config = new_alert.to_alert_config().to_response();
     Ok(web::Json(config))
 }
+}
 
-// PUT /alerts/{alert_id}/evaluate_alert
+/// Evaluate alert immediately
+///
+/// Triggers an immediate evaluation of an alert.
+#[utoipa::path(
+    put,
+    path = "/api/v1/alerts/{alert_id}/evaluate_alert",
+    tag = "alerts",
+    summary = "Evaluate alert now",
+    description = "Immediately evaluates the alert query against current data, bypassing the normal scheduled evaluation. Restarts the alert task to trigger evaluation.",
+    params(
+        ("alert_id" = String, Path, description = "Alert ID (ULID format)")
+    ),
+    responses(
+        (status = 200, description = "Alert evaluation triggered", body = serde_json::Value),
+        (status = 403, description = "Insufficient permissions"),
+        (status = 404, description = "Alert not found")
+    ),
+    security(
+        ("authorization" = [])
+    )
+)]
 pub async fn evaluate_alert(
     req: HttpRequest,
     alert_id: Path<Ulid>,
@@ -625,6 +667,10 @@ pub async fn evaluate_alert(
     Ok(Json(config))
 }
 
+list_alert_tags! {
+/// List alert tags
+///
+/// Returns all unique tags used across alerts.
 pub async fn list_tags() -> Result<impl Responder, AlertError> {
     let guard = ALERTS.read().await;
     let alerts = if let Some(alerts) = guard.as_ref() {
@@ -634,4 +680,5 @@ pub async fn list_tags() -> Result<impl Responder, AlertError> {
     };
     let tags = alerts.list_tags().await;
     Ok(web::Json(tags))
+}
 }

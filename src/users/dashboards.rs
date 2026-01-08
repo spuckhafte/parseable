@@ -33,7 +33,7 @@ use crate::{
 pub static DASHBOARDS: Lazy<Dashboards> = Lazy::new(Dashboards::default);
 pub const CURRENT_DASHBOARD_VERSION: &str = "v1";
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default, utoipa::ToSchema)]
 /// type of dashboard
 /// Dashboard is the default type
 /// Report is a type of dashboard that is used for reporting
@@ -45,21 +45,25 @@ pub enum DashboardType {
     Report,
 }
 
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, utoipa::ToSchema)]
 pub struct Tile {
+    #[schema(value_type = String)]
     pub tile_id: Ulid,
     /// all other fields are variable and can be added as needed
     #[serde(flatten)]
     pub other_fields: Option<serde_json::Map<String, Value>>,
 }
-#[derive(Debug, Serialize, Deserialize, Default, Clone)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Dashboard {
     pub version: Option<String>,
     pub title: String,
     pub author: Option<String>,
+    #[schema(value_type = Option<String>)]
     pub dashboard_id: Option<Ulid>,
+    #[schema(value_type = Option<String>)]
     pub created: Option<DateTime<Utc>>,
+    #[schema(value_type = Option<String>)]
     pub modified: Option<DateTime<Utc>>,
     pub tags: Option<Vec<String>>,
     pub is_favorite: Option<bool>, // whether the dashboard is marked as favorite, default is false

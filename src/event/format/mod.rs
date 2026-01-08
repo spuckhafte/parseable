@@ -57,7 +57,7 @@ static TIME_FIELD_NAME_PARTS: [&str; 11] = [
 type EventSchema = Vec<Arc<Field>>;
 
 /// Source of the logs, used to perform special processing for certain sources
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, utoipa::ToSchema)]
 pub enum LogSource {
     // AWS Kinesis sends logs in the format of a json array
     #[serde(rename = "kinesis")]
@@ -116,7 +116,7 @@ impl Display for LogSource {
 
 /// Contains the format name and a list of known field names that are associated with the said format.
 /// Stored on disk as part of `ObjectStoreFormat` in stream.json
-#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct LogSourceEntry {
     pub log_source_format: LogSource,
     pub fields: HashSet<String>,

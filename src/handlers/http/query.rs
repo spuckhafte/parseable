@@ -16,6 +16,9 @@
  *
  */
 
+// Import swagger documentation macros
+use crate::{execute_query, get_counts};
+
 use crate::event::error::EventError;
 use crate::handlers::http::fetch_schema;
 use crate::metastore::MetastoreError;
@@ -60,7 +63,7 @@ use crate::utils::user_auth_for_datasets;
 
 pub const TIME_ELAPSED_HEADER: &str = "p-time-elapsed";
 /// Query Request through http endpoint.
-#[derive(Debug, Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Query {
     pub query: String,
@@ -108,6 +111,7 @@ pub async fn get_records_and_fields(
     Ok((Some(records), Some(fields)))
 }
 
+execute_query! {
 pub async fn query(req: HttpRequest, query_request: Query) -> Result<HttpResponse, QueryError> {
     let session_state = QUERY_SESSION.state();
     let time_range =
@@ -340,7 +344,9 @@ fn create_batch_processor(
         Err(e) => Err(actix_web::error::ErrorInternalServerError(e)),
     }
 }
+}
 
+get_counts! {
 pub async fn get_counts(
     req: HttpRequest,
     counts_request: Json<CountsRequest>,
@@ -402,6 +408,7 @@ pub async fn get_counts(
         "records": records,
     });
     Ok(web::Json(res))
+}
 }
 
 pub async fn update_schema_when_distributed(tables: &Vec<String>) -> Result<(), EventError> {

@@ -182,6 +182,7 @@ pub fn get_admin_user() -> User {
 pub struct OAuth {
     pub userid: String,
     pub user_info: UserInfo,
+    #[serde(skip)]
     pub bearer: Option<Bearer>,
 }
 

@@ -53,6 +53,9 @@ pub mod validator;
 
 use std::time::Duration;
 
+// Swagger API documentation
+pub use utils::swagger::ApiDoc;
+
 // Public re-exports of crates being used in enterprise
 pub use datafusion;
 pub use handlers::http::modal::{

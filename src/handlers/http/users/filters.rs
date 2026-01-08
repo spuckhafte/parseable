@@ -17,10 +17,13 @@
  */
 
 use crate::{
+    create_filter, delete_filter, get_filter_by_id,
     handlers::http::rbac::RBACError,
+    list_filters,
     metastore::MetastoreError,
     parseable::PARSEABLE,
     storage::ObjectStorageError,
+    update_filter,
     users::filters::{CURRENT_FILTER_VERSION, FILTERS, Filter},
     utils::{actix::extract_session_key_from_req, get_hash, get_user_from_request, is_admin},
 };
@@ -33,13 +36,22 @@ use http::StatusCode;
 use serde_json::Error as SerdeError;
 use ulid::Ulid;
 
+list_filters! {
+/// List filters
+///
+/// Returns all filters accessible by the current user.
 pub async fn list(req: HttpRequest) -> Result<impl Responder, FiltersError> {
     let key =
         extract_session_key_from_req(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
     let filters = FILTERS.list_filters(&key).await;
     Ok((web::Json(filters), StatusCode::OK))
 }
+}
 
+get_filter_by_id! {
+/// Get filter
+///
+/// Retrieves a specific filter by ID.
 pub async fn get(
     req: HttpRequest,
     filter_id: Path<String>,
@@ -58,7 +70,12 @@ pub async fn get(
         "Filter does not exist or user is not authorized",
     ))
 }
+}
 
+create_filter! {
+/// Create filter
+///
+/// Creates a new filter with specified query and stream.
 pub async fn post(
     req: HttpRequest,
     Json(mut filter): Json<Filter>,
@@ -75,7 +92,12 @@ pub async fn post(
 
     Ok((web::Json(filter), StatusCode::OK))
 }
+}
 
+update_filter! {
+/// Update filter
+///
+/// Updates an existing filter's configuration.
 pub async fn update(
     req: HttpRequest,
     filter_id: Path<String>,
@@ -104,7 +126,12 @@ pub async fn update(
 
     Ok((web::Json(filter), StatusCode::OK))
 }
+}
 
+delete_filter! {
+/// Delete filter
+///
+/// Permanently deletes a filter.
 pub async fn delete(
     req: HttpRequest,
     filter_id: Path<String>,
@@ -124,6 +151,7 @@ pub async fn delete(
     FILTERS.delete_filter(&filter_id).await;
 
     Ok(HttpResponse::Ok().finish())
+}
 }
 
 #[derive(Debug, thiserror::Error)]

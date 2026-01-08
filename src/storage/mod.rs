@@ -143,7 +143,7 @@ impl MetastoreObject for ObjectStoreFormat {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct StreamInfo {
     pub created_at: String,
@@ -171,7 +171,17 @@ pub struct StreamInfo {
     pub telemetry_type: TelemetryType,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize, Default)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    serde::Serialize,
+    serde::Deserialize,
+    Default,
+    utoipa::ToSchema,
+)]
 pub enum StreamType {
     #[default]
     UserDefined,

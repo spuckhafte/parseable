@@ -77,7 +77,9 @@ pub enum Action {
     PutCorrelation,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize, utoipa::ToSchema,
+)]
 pub enum ParseableResourceType {
     #[serde(rename = "stream")]
     Stream(String),
@@ -183,7 +185,9 @@ pub mod model {
 
     use super::{Action, RoleBuilder};
 
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash)]
+    #[derive(
+        Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Hash, utoipa::ToSchema,
+    )]
     #[serde(tag = "privilege", rename_all = "lowercase")]
     pub enum DefaultPrivilege {
         Admin,

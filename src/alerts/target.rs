@@ -134,7 +134,7 @@ impl Default for Retry {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[serde(try_from = "TargetVerifier")]
 pub struct Target {
@@ -142,6 +142,7 @@ pub struct Target {
     #[serde(flatten)]
     pub target: TargetType,
     #[serde(default = "Ulid::new")]
+    #[schema(value_type = String)]
     pub id: Ulid,
 }
 
@@ -396,7 +397,7 @@ impl TryFrom<TargetVerifier> for Target {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "type")]
 #[serde(deny_unknown_fields)]
@@ -423,8 +424,9 @@ fn default_client_builder() -> ClientBuilder {
     ClientBuilder::new()
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct SlackWebHook {
+    #[schema(value_type = String)]
     endpoint: Url,
 }
 
@@ -453,9 +455,10 @@ impl CallableTarget for SlackWebHook {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OtherWebHook {
+    #[schema(value_type = String)]
     endpoint: Url,
     #[serde(default)]
     headers: HashMap<String, String>,
@@ -491,9 +494,10 @@ impl CallableTarget for OtherWebHook {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AlertManager {
+    #[schema(value_type = String)]
     endpoint: Url,
     #[serde(default)]
     skip_tls_check: bool,
@@ -565,12 +569,14 @@ impl CallableTarget for AlertManager {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 pub struct NotificationConfig {
     pub interval: u64,
     #[serde(skip)]
+    #[schema(value_type = String)]
     pub times: Retry,
     #[serde(skip)]
+    #[schema(value_type = String)]
     pub state: Arc<Mutex<TimeoutState>>,
 }
 
@@ -591,7 +597,7 @@ pub struct TimeoutState {
     pub awaiting_resolve: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, utoipa::ToSchema)]
 pub struct Auth {
     username: String,
     password: String,

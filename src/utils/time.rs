@@ -49,9 +49,11 @@ impl TimeBounds {
 }
 
 /// Represents a range of time with a start and end point.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, utoipa::ToSchema)]
 pub struct TimeRange {
+    #[schema(value_type = String)]
     pub start: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub end: DateTime<Utc>,
 }
 

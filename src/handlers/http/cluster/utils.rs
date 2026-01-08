@@ -27,9 +27,11 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 use url::Url;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct QueriedStats {
     pub stream: String,
+
+    #[schema(value_type = String, example = "2024-01-01T12:00:00Z")]
     pub time: DateTime<Utc>,
     pub ingestion: IngestionStats,
     pub storage: StorageStats,
@@ -84,7 +86,7 @@ impl ClusterInfo {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct IngestionStats {
     pub count: u64,
     pub size: u64,
@@ -117,7 +119,7 @@ impl IngestionStats {
     }
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct StorageStats {
     pub size: u64,
     pub format: String,

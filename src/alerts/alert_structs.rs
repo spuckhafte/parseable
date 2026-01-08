@@ -169,20 +169,20 @@ pub struct OperationConfig {
     pub value: Option<String>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FilterConfig {
     pub conditions: Vec<Conditions>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 pub struct ConditionConfig {
     pub column: String,
     pub operator: WhereConfigOperator,
     pub value: Option<String>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Conditions {
     pub operator: Option<LogicalOperator>,
@@ -233,20 +233,20 @@ impl Conditions {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GroupBy {
     pub columns: Vec<String>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ThresholdConfig {
     pub operator: AlertOperator,
     pub value: f64,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RollingWindow {
     // x minutes (25m)
@@ -267,7 +267,7 @@ impl Default for RollingWindow {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AlertRequest {
     #[serde(default = "Severity::default")]
@@ -281,6 +281,7 @@ pub struct AlertRequest {
     #[serde(default)]
     pub notification_config: NotificationConfig,
     pub eval_config: EvalConfig,
+    #[schema(value_type = Vec<String>)]
     pub targets: Vec<Ulid>,
     pub tags: Option<Vec<String>>,
     #[serde(flatten)]
@@ -401,11 +402,12 @@ pub struct AlertConfig {
     pub other_fields: Option<serde_json::Map<String, Value>>,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AlertConfigResponse {
     pub version: AlertVersion,
     #[serde(default)]
+    #[schema(value_type = String)]
     pub id: Ulid,
     pub severity: Severity,
     pub title: String,
@@ -416,14 +418,17 @@ pub struct AlertConfigResponse {
     pub forecast_config: Option<ForecastConfig>,
     pub threshold_config: ThresholdConfig,
     pub eval_config: EvalConfig,
+    #[schema(value_type = Vec<String>)]
     pub targets: Vec<Ulid>,
     // for new alerts, state should be resolved
     #[serde(default)]
     pub state: AlertState,
     pub notification_state: NotificationState,
     pub notification_config: NotificationConfig,
+    #[schema(value_type = String)]
     pub created: DateTime<Utc>,
     pub tags: Option<Vec<String>>,
+    #[schema(value_type = Option<String>)]
     pub last_triggered_at: Option<DateTime<Utc>>,
     #[serde(flatten)]
     pub other_fields: Option<serde_json::Map<String, Value>>,
@@ -514,7 +519,7 @@ pub struct AlertsInfo {
     pub severity: Severity,
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ForecastConfig {
     pub historic_duration: String,
@@ -543,7 +548,7 @@ impl ForecastConfig {
     }
 }
 
-#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq)]
+#[derive(Debug, serde::Serialize, serde::Deserialize, Clone, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AnomalyConfig {
     pub historic_duration: String,

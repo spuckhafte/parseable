@@ -122,8 +122,9 @@ pub async fn execute(
 }
 
 // A query request by client
-#[derive(Debug)]
+#[derive(Debug, utoipa::ToSchema)]
 pub struct Query {
+    #[schema(value_type = Object)]
     pub raw_logical_plan: LogicalPlan,
     pub time_range: TimeRange,
     pub filter_tag: Option<Vec<String>>,
@@ -421,7 +422,7 @@ struct TimeBounds {
     end: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CountConditions {
     /// Optional conditions for filters
@@ -431,7 +432,7 @@ pub struct CountConditions {
 }
 
 /// Request for counts, received from API/SQL query.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CountsRequest {
     /// Name of the stream to get counts for

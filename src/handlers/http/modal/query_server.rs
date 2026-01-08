@@ -37,7 +37,10 @@ use actix_web_prometheus::PrometheusMetrics;
 use async_trait::async_trait;
 use bytes::Bytes;
 use tokio::sync::{OnceCell, oneshot};
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
+use crate::ApiDoc;
 use crate::Server;
 use crate::parseable::PARSEABLE;
 
@@ -83,6 +86,12 @@ impl ParseableServer for QueryServer {
                     .service(Server::get_prism_home())
                     .service(Server::get_prism_logstream())
                     .service(Server::get_prism_datasets()),
+            )
+
+            // api docs with swagger
+            .service(
+                SwaggerUi::new("/docs/{_:.*}")
+                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
             .service(Server::get_generated());
     }

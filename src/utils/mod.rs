@@ -22,6 +22,7 @@ pub mod error;
 pub mod header_parsing;
 pub mod human_size;
 pub mod json;
+pub mod swagger;
 pub mod time;
 pub mod uid;
 pub mod update;

@@ -35,6 +35,13 @@ use crate::utils::json::flatten::{
 };
 use crate::{LOCK_EXPECT, stats, validator};
 
+// Import swagger documentation macros
+use crate::{
+    delete_logstream, delete_logstream_hottier, detect_logstream_schema, get_logstream_hottier,
+    get_logstream_info, get_logstream_retention, get_logstream_schema, get_logstream_stats,
+    list_logstreams, put_logstream, put_logstream_hottier, put_logstream_retention,
+};
+
 use actix_web::http::StatusCode;
 use actix_web::web::{Json, Path};
 use actix_web::{HttpRequest, Responder, web};
@@ -47,6 +54,12 @@ use std::fs;
 use std::sync::Arc;
 use tracing::warn;
 
+#[derive(serde::Serialize, utoipa::ToSchema)]
+pub struct StreamListEntry {
+    pub name: String,
+}
+
+delete_logstream! {
 pub async fn delete(stream_name: Path<String>) -> Result<impl Responder, StreamError> {
     let stream_name = stream_name.into_inner();
     // Error out if stream doesn't exist in memory, or in the case of query node, in storage as well
@@ -81,7 +94,9 @@ pub async fn delete(stream_name: Path<String>) -> Result<impl Responder, StreamE
 
     Ok((format!("log stream {stream_name} deleted"), StatusCode::OK))
 }
+}
 
+list_logstreams! {
 pub async fn list(req: HttpRequest) -> Result<impl Responder, StreamError> {
     let key = extract_session_key_from_req(&req)
         .map_err(|err| StreamError::Anyhow(anyhow::Error::msg(err.to_string())))?;
@@ -101,7 +116,9 @@ pub async fn list(req: HttpRequest) -> Result<impl Responder, StreamError> {
 
     Ok(web::Json(res))
 }
+}
 
+detect_logstream_schema! {
 pub async fn detect_schema(Json(json): Json<Value>) -> Result<impl Responder, StreamError> {
     // flatten before infer
     if !has_more_than_max_allowed_levels(&json, 1) {
@@ -158,7 +175,9 @@ pub async fn detect_schema(Json(json): Json<Value>) -> Result<impl Responder, St
         })
     }
 }
+}
 
+get_logstream_schema! {
 pub async fn get_schema(stream_name: Path<String>) -> Result<impl Responder, StreamError> {
     let stream_name = stream_name.into_inner();
 
@@ -179,7 +198,9 @@ pub async fn get_schema(stream_name: Path<String>) -> Result<impl Responder, Str
         }),
     }
 }
+}
 
+put_logstream! {
 pub async fn put_stream(
     req: HttpRequest,
     stream_name: Path<String>,
@@ -192,7 +213,9 @@ pub async fn put_stream(
 
     Ok(("Log stream created", StatusCode::OK))
 }
+}
 
+get_logstream_retention! {
 pub async fn get_retention(stream_name: Path<String>) -> Result<impl Responder, StreamError> {
     let stream_name = stream_name.into_inner();
     // For query mode, if the stream not found in memory map,
@@ -208,7 +231,9 @@ pub async fn get_retention(stream_name: Path<String>) -> Result<impl Responder, 
         .unwrap_or_default();
     Ok((web::Json(retention), StatusCode::OK))
 }
+}
 
+put_logstream_retention! {
 pub async fn put_retention(
     stream_name: Path<String>,
     Json(retention): Json<Retention>,
@@ -235,6 +260,7 @@ pub async fn put_retention(
         StatusCode::OK,
     ))
 }
+}
 
 pub async fn get_stats_date(stream_name: &str, date: &str) -> Result<Stats, StreamError> {
     let event_labels = event_labels_date(stream_name, "json", date);
@@ -260,6 +286,7 @@ pub async fn get_stats_date(stream_name: &str, date: &str) -> Result<Stats, Stre
     Ok(stats)
 }
 
+get_logstream_stats! {
 pub async fn get_stats(
     req: HttpRequest,
     stream_name: Path<String>,
@@ -321,7 +348,9 @@ pub async fn get_stats(
 
     Ok((web::Json(stats), StatusCode::OK))
 }
+}
 
+get_logstream_info! {
 pub async fn get_stream_info(stream_name: Path<String>) -> Result<impl Responder, StreamError> {
     let stream_name = stream_name.into_inner();
     // For query mode, if the stream not found in memory map,
@@ -373,7 +402,9 @@ pub async fn get_stream_info(stream_name: Path<String>) -> Result<impl Responder
 
     Ok((web::Json(stream_info), StatusCode::OK))
 }
+}
 
+put_logstream_hottier! {
 pub async fn put_stream_hot_tier(
     stream_name: Path<String>,
     Json(mut hottier): Json<StreamHotTier>,
@@ -430,7 +461,9 @@ pub async fn put_stream_hot_tier(
         StatusCode::OK,
     ))
 }
+}
 
+get_logstream_hottier! {
 pub async fn get_stream_hot_tier(stream_name: Path<String>) -> Result<impl Responder, StreamError> {
     let stream_name = stream_name.into_inner();
 
@@ -448,7 +481,9 @@ pub async fn get_stream_hot_tier(stream_name: Path<String>) -> Result<impl Respo
 
     Ok((web::Json(meta), StatusCode::OK))
 }
+}
 
+delete_logstream_hottier! {
 pub async fn delete_stream_hot_tier(
     stream_name: Path<String>,
 ) -> Result<impl Responder, StreamError> {
@@ -492,6 +527,7 @@ pub async fn delete_stream_hot_tier(
         format!("hot tier deleted for stream {stream_name}"),
         StatusCode::OK,
     ))
+}
 }
 
 #[allow(unused)]

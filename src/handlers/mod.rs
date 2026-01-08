@@ -49,7 +49,7 @@ pub const KINESIS_COMMON_ATTRIBUTES_KEY: &str = "x-amz-firehose-common-attribute
 pub const CONTENT_TYPE_JSON: &str = "application/json";
 pub const CONTENT_TYPE_PROTOBUF: &str = "application/x-protobuf";
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum TelemetryType {
     #[default]

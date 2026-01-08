@@ -18,6 +18,10 @@
 
 use std::collections::HashSet;
 
+use crate::{
+    delete_role, get_default_role, get_role_by_name, list_roles, list_roles_detailed,
+    put_default_role, put_role,
+};
 use actix_web::{
     HttpResponse, Responder,
     http::header::ContentType,
@@ -35,8 +39,10 @@ use crate::{
     validator::{self, error::UsernameValidationError},
 };
 
-// Handler for PUT /api/v1/role/{name}
-// Creates a new role or update existing one
+put_role! {
+/// Create or update role
+///
+/// Creates a new role or updates an existing role with specified privileges.
 pub async fn put(
     name: web::Path<String>,
     Json(privileges): Json<Vec<DefaultPrivilege>>,
@@ -72,34 +78,46 @@ pub async fn put(
 
     Ok(HttpResponse::Ok().finish())
 }
+}
 
-// Handler for GET /api/v1/role/{name}
-// Fetch role by name
+get_role_by_name! {
+/// Get role details
+///
+/// Retrieves privilege configuration for a specific role.
 pub async fn get(name: web::Path<String>) -> Result<impl Responder, RoleError> {
     let name = name.into_inner();
     let metadata = get_metadata().await?;
     let privileges = metadata.roles.get(&name).cloned().unwrap_or_default();
     Ok(web::Json(privileges))
 }
+}
 
-// Handler for GET /api/v1/role
-// Fetch all roles in the system
+list_roles! {
+/// List role names
+///
+/// Returns a list of all role names in the system.
 pub async fn list() -> Result<impl Responder, RoleError> {
     let metadata = get_metadata().await?;
     let roles: Vec<String> = metadata.roles.keys().cloned().collect();
     Ok(web::Json(roles))
 }
+}
 
-// Handler for GET /api/v1/roles
-// Fetch all roles in the system
+list_roles_detailed! {
+/// List all roles with privileges
+///
+/// Returns all roles with their complete privilege configurations.
 pub async fn list_roles() -> Result<impl Responder, RoleError> {
     let metadata = get_metadata().await?;
     let roles = metadata.roles.clone();
     Ok(web::Json(roles))
 }
+}
 
-// Handler for DELETE /api/v1/role/{name}
-// Delete existing role
+delete_role! {
+/// Delete role
+///
+/// Permanently deletes a role if it's not currently assigned to any users or groups.
 pub async fn delete(name: web::Path<String>) -> Result<impl Responder, RoleError> {
     let name = name.into_inner();
     // check if the role is being used by any user or group
@@ -120,9 +138,12 @@ pub async fn delete(name: web::Path<String>) -> Result<impl Responder, RoleError
 
     Ok(HttpResponse::Ok().finish())
 }
+}
 
-// Handler for PUT /api/v1/role/default
-// Delete existing role
+put_default_role! {
+/// Set default role
+///
+/// Configures the default role assigned to new users.
 pub async fn put_default(name: web::Json<String>) -> Result<impl Responder, RoleError> {
     let name = name.into_inner();
     let mut metadata = get_metadata().await?;
@@ -131,9 +152,12 @@ pub async fn put_default(name: web::Json<String>) -> Result<impl Responder, Role
     put_metadata(&metadata).await?;
     Ok(HttpResponse::Ok().finish())
 }
+}
 
-// Handler for GET /api/v1/role/default
-// Delete existing role
+get_default_role! {
+/// Get default role
+///
+/// Returns the currently configured default role for new users.
 pub async fn get_default() -> Result<impl Responder, RoleError> {
     let res = match DEFAULT_ROLE.lock().unwrap().clone() {
         Some(role) => serde_json::Value::String(role),
@@ -141,6 +165,7 @@ pub async fn get_default() -> Result<impl Responder, RoleError> {
     };
 
     Ok(web::Json(res))
+}
 }
 
 async fn get_metadata() -> Result<crate::storage::StorageMetadata, ObjectStorageError> {
