@@ -85,11 +85,9 @@ impl ParseableServer for IngestServer {
             .service(Server::get_ingest_otel_factory().wrap(from_fn(
                 resource_check::check_resource_utilization_middleware,
             )))
-
             // api docs with swagger
             .service(
-                SwaggerUi::new("/docs/{_:.*}")
-                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
+                SwaggerUi::new("/docs/{_:.*}").url("/api-docs/openapi.json", ApiDoc::openapi()),
             );
     }
 

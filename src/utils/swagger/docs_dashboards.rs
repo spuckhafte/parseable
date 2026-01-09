@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_dashboards {
+macro_rules! doc_list_dashboards {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -39,7 +39,7 @@ macro_rules! list_dashboards {
 }
 
 #[macro_export]
-macro_rules! get_dashboard_by_id {
+macro_rules! doc_get_dashboard_by_id {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -65,7 +65,7 @@ macro_rules! get_dashboard_by_id {
 }
 
 #[macro_export]
-macro_rules! create_dashboard {
+macro_rules! doc_create_dashboard {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -88,7 +88,7 @@ macro_rules! create_dashboard {
 }
 
 #[macro_export]
-macro_rules! update_dashboard {
+macro_rules! doc_update_dashboard {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -114,7 +114,3 @@ macro_rules! update_dashboard {
         $($item)*
     };
 }
-
-// ============================================================================
-// RBAC ENDPOINTS
-// ============================================================================

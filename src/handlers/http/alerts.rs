@@ -27,10 +27,9 @@ use crate::{
         alert_types::ThresholdAlert,
         target::Retry,
     },
-    create_alert, delete_alert, disable_alert, enable_alert, get_alert_by_id, list_alert_tags,
-    list_alerts,
+    doc_create_alert, doc_delete_alert, doc_disable_alert, doc_enable_alert, doc_get_alert_by_id,
+    doc_list_alert_tags, doc_list_alerts, doc_modify_alert,
     metastore::metastore_traits::MetastoreObject,
-    modify_alert,
     parseable::PARSEABLE,
     utils::{actix::extract_session_key_from_req, user_auth_for_query},
 };
@@ -206,196 +205,196 @@ fn paginate_alerts(
         .collect()
 }
 
-list_alerts! {
-// GET /alerts
-/// User needs at least a read access to the stream(s) that is being referenced in an alert
-/// Read all alerts then return alerts which satisfy the condition
-pub async fn list(req: HttpRequest) -> Result<impl Responder, AlertError> {
-    let session_key = extract_session_key_from_req(&req)?;
-    let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
-        .map_err(|_| AlertError::InvalidQueryParameter("malformed query parameters".to_string()))?;
+doc_list_alerts! {
+    // GET /alerts
+    /// User needs at least a read access to the stream(s) that is being referenced in an alert
+    /// Read all alerts then return alerts which satisfy the condition
+    pub async fn list(req: HttpRequest) -> Result<impl Responder, AlertError> {
+        let session_key = extract_session_key_from_req(&req)?;
+        let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
+            .map_err(|_| AlertError::InvalidQueryParameter("malformed query parameters".to_string()))?;
 
-    // Parse and validate query parameters
-    let params = parse_list_query_params(&query_map)?;
+        // Parse and validate query parameters
+        let params = parse_list_query_params(&query_map)?;
 
-    // Get alerts from the manager
-    let guard = ALERTS.read().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
+        // Get alerts from the manager
+        let guard = ALERTS.read().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
+        } else {
+            return Err(AlertError::CustomError("No AlertManager set".into()));
+        };
 
-    // Fetch alerts for the user
-    let alerts = alerts
-        .list_alerts_for_user(session_key, params.tags_list)
-        .await?;
-    let mut alerts_summary = alerts
-        .iter()
-        .map(|alert| alert.to_summary())
-        .collect::<Vec<_>>();
+        // Fetch alerts for the user
+        let alerts = alerts
+            .list_alerts_for_user(session_key, params.tags_list)
+            .await?;
+        let mut alerts_summary = alerts
+            .iter()
+            .map(|alert| alert.to_summary())
+            .collect::<Vec<_>>();
 
-    // Filter by other_fields
-    alerts_summary = filter_by_other_fields(alerts_summary, &params.other_fields_filters);
+        // Filter by other_fields
+        alerts_summary = filter_by_other_fields(alerts_summary, &params.other_fields_filters);
 
-    // Sort alerts
-    sort_alerts(&mut alerts_summary);
+        // Sort alerts
+        sort_alerts(&mut alerts_summary);
 
-    // Paginate results
-    let paginated_alerts = paginate_alerts(alerts_summary, params.offset, params.limit);
+        // Paginate results
+        let paginated_alerts = paginate_alerts(alerts_summary, params.offset, params.limit);
 
-    Ok(web::Json(paginated_alerts))
-}
-}
-
-create_alert! {
-/// Create alert
-///
-/// Creates a new alert with specified query, thresholds, and notification configuration.
-pub async fn post(
-    req: HttpRequest,
-    Json(alert): Json<AlertRequest>,
-) -> Result<impl Responder, AlertError> {
-    let mut alert: AlertConfig = alert.into().await?;
-
-    if alert.notification_config.interval > alert.get_eval_frequency() {
-        return Err(AlertError::ValidationFailure(
-            "Notification interval cannot exceed evaluation frequency".into(),
-        ));
+        Ok(web::Json(paginated_alerts))
     }
+}
 
-    if alert.get_eval_frequency().eq(&0) {
-        return Err(AlertError::ValidationFailure(
-            "Eval frequency cannot be 0".into(),
-        ));
+doc_create_alert! {
+    /// Create alert
+    ///
+    /// Creates a new alert with specified query, thresholds, and notification configuration.
+    pub async fn post(
+        req: HttpRequest,
+        Json(alert): Json<AlertRequest>,
+    ) -> Result<impl Responder, AlertError> {
+        let mut alert: AlertConfig = alert.into().await?;
+
+        if alert.notification_config.interval > alert.get_eval_frequency() {
+            return Err(AlertError::ValidationFailure(
+                "Notification interval cannot exceed evaluation frequency".into(),
+            ));
+        }
+
+        if alert.get_eval_frequency().eq(&0) {
+            return Err(AlertError::ValidationFailure(
+                "Eval frequency cannot be 0".into(),
+            ));
+        }
+        if alert.notification_config.interval.eq(&0) {
+            return Err(AlertError::ValidationFailure(
+                "Notification interval cannot be 0".into(),
+            ));
+        }
+
+        // calculate the `times` for notification config
+        let eval_freq = alert.get_eval_frequency();
+        let notif_freq = alert.notification_config.interval;
+        let times = if (eval_freq / notif_freq) == 0 {
+            1
+        } else {
+            (eval_freq / notif_freq) as usize
+        };
+
+        alert.notification_config.times = Retry::Finite(times);
+
+        let threshold_alert;
+        let alert: &dyn AlertTrait = match &alert.alert_type {
+            AlertType::Threshold => {
+                threshold_alert = ThresholdAlert::from(alert);
+                &threshold_alert
+            }
+            AlertType::Anomaly(_) => {
+                return Err(AlertError::NotPresentInOSS("anomaly"));
+            }
+            AlertType::Forecast(_) => {
+                return Err(AlertError::NotPresentInOSS("forecast"));
+            }
+        };
+
+        let guard = ALERTS.write().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
+        } else {
+            return Err(AlertError::CustomError("No AlertManager set".into()));
+        };
+
+        // validate the incoming alert query
+        // does the user have access to these tables or not?
+        let session_key = extract_session_key_from_req(&req)?;
+
+        alert.validate(&session_key).await?;
+
+        // update persistent storage first
+        PARSEABLE
+            .metastore
+            .put_alert(&alert.to_alert_config())
+            .await?;
+
+        // create initial alert state entry (default to NotTriggered)
+        let state_entry = AlertStateEntry::new(*alert.get_id(), AlertState::NotTriggered);
+        PARSEABLE
+            .metastore
+            .put_alert_state(&state_entry as &dyn MetastoreObject)
+            .await?;
+
+        // update in memory
+        alerts.update(alert).await;
+
+        // start the task
+        alerts.start_task(alert.clone_box()).await?;
+
+        Ok(web::Json(alert.to_alert_config().to_response()))
     }
-    if alert.notification_config.interval.eq(&0) {
-        return Err(AlertError::ValidationFailure(
-            "Notification interval cannot be 0".into(),
-        ));
+}
+
+doc_get_alert_by_id! {
+    /// Get alert details
+    ///
+    /// Retrieves complete configuration for a specific alert.
+    pub async fn get(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
+        let session_key = extract_session_key_from_req(&req)?;
+        let alert_id = alert_id.into_inner();
+
+        let guard = ALERTS.read().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
+        } else {
+            return Err(AlertError::CustomError("No AlertManager set".into()));
+        };
+
+        let alert = alerts.get_alert_by_id(alert_id).await?;
+        // validate that the user has access to the tables mentioned in the query
+        user_auth_for_query(&session_key, alert.get_query()).await?;
+
+        Ok(web::Json(alert.to_alert_config().to_response()))
     }
-
-    // calculate the `times` for notification config
-    let eval_freq = alert.get_eval_frequency();
-    let notif_freq = alert.notification_config.interval;
-    let times = if (eval_freq / notif_freq) == 0 {
-        1
-    } else {
-        (eval_freq / notif_freq) as usize
-    };
-
-    alert.notification_config.times = Retry::Finite(times);
-
-    let threshold_alert;
-    let alert: &dyn AlertTrait = match &alert.alert_type {
-        AlertType::Threshold => {
-            threshold_alert = ThresholdAlert::from(alert);
-            &threshold_alert
-        }
-        AlertType::Anomaly(_) => {
-            return Err(AlertError::NotPresentInOSS("anomaly"));
-        }
-        AlertType::Forecast(_) => {
-            return Err(AlertError::NotPresentInOSS("forecast"));
-        }
-    };
-
-    let guard = ALERTS.write().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
-
-    // validate the incoming alert query
-    // does the user have access to these tables or not?
-    let session_key = extract_session_key_from_req(&req)?;
-
-    alert.validate(&session_key).await?;
-
-    // update persistent storage first
-    PARSEABLE
-        .metastore
-        .put_alert(&alert.to_alert_config())
-        .await?;
-
-    // create initial alert state entry (default to NotTriggered)
-    let state_entry = AlertStateEntry::new(*alert.get_id(), AlertState::NotTriggered);
-    PARSEABLE
-        .metastore
-        .put_alert_state(&state_entry as &dyn MetastoreObject)
-        .await?;
-
-    // update in memory
-    alerts.update(alert).await;
-
-    // start the task
-    alerts.start_task(alert.clone_box()).await?;
-
-    Ok(web::Json(alert.to_alert_config().to_response()))
-}
 }
 
-get_alert_by_id! {
-/// Get alert details
-///
-/// Retrieves complete configuration for a specific alert.
-pub async fn get(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
-    let session_key = extract_session_key_from_req(&req)?;
-    let alert_id = alert_id.into_inner();
+doc_delete_alert! {
+    /// Delete alert
+    ///
+    /// Permanently deletes an alert and stops its monitoring task.
+    pub async fn delete(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
+        let session_key = extract_session_key_from_req(&req)?;
+        let alert_id = alert_id.into_inner();
 
-    let guard = ALERTS.read().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
+        let guard = ALERTS.write().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
+        } else {
+            return Err(AlertError::CustomError("No AlertManager set".into()));
+        };
 
-    let alert = alerts.get_alert_by_id(alert_id).await?;
-    // validate that the user has access to the tables mentioned in the query
-    user_auth_for_query(&session_key, alert.get_query()).await?;
+        let alert = alerts.get_alert_by_id(alert_id).await?;
 
-    Ok(web::Json(alert.to_alert_config().to_response()))
-}
-}
+        // validate that the user has access to the tables mentioned in the query
+        user_auth_for_query(&session_key, alert.get_query()).await?;
 
-delete_alert! {
-/// Delete alert
-///
-/// Permanently deletes an alert and stops its monitoring task.
-pub async fn delete(req: HttpRequest, alert_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
-    let session_key = extract_session_key_from_req(&req)?;
-    let alert_id = alert_id.into_inner();
+        PARSEABLE.metastore.delete_alert(&*alert).await?;
 
-    let guard = ALERTS.write().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
+        // delete the associated alert state
+        let state_to_delete = AlertStateEntry::new(alert_id, AlertState::NotTriggered); // state doesn't matter for deletion
+        PARSEABLE
+            .metastore
+            .delete_alert_state(&state_to_delete as &dyn MetastoreObject)
+            .await?;
 
-    let alert = alerts.get_alert_by_id(alert_id).await?;
+        // delete from memory
+        alerts.delete(alert_id).await?;
 
-    // validate that the user has access to the tables mentioned in the query
-    user_auth_for_query(&session_key, alert.get_query()).await?;
+        // delete the scheduled task
+        alerts.delete_task(alert_id).await?;
 
-    PARSEABLE.metastore.delete_alert(&*alert).await?;
-
-    // delete the associated alert state
-    let state_to_delete = AlertStateEntry::new(alert_id, AlertState::NotTriggered); // state doesn't matter for deletion
-    PARSEABLE
-        .metastore
-        .delete_alert_state(&state_to_delete as &dyn MetastoreObject)
-        .await?;
-
-    // delete from memory
-    alerts.delete(alert_id).await?;
-
-    // delete the scheduled task
-    alerts.delete_task(alert_id).await?;
-
-    Ok(format!("Deleted alert with ID- {alert_id}"))
-}
+        Ok(format!("Deleted alert with ID- {alert_id}"))
+    }
 }
 
 // PATCH /alerts/{alert_id}/update_notification_state
@@ -456,165 +455,165 @@ pub async fn update_notification_state(
     Ok(web::Json(alert.to_alert_config().to_response()))
 }
 
-disable_alert! {
-/// Disable alert
-///
-/// Disables an alert temporarily without deleting it.
-pub async fn disable_alert(
-    req: HttpRequest,
-    alert_id: Path<Ulid>,
-) -> Result<impl Responder, AlertError> {
-    let session_key = extract_session_key_from_req(&req)?;
-    let alert_id = alert_id.into_inner();
+doc_disable_alert! {
+    /// Disable alert
+    ///
+    /// Disables an alert temporarily without deleting it.
+    pub async fn disable_alert(
+        req: HttpRequest,
+        alert_id: Path<Ulid>,
+    ) -> Result<impl Responder, AlertError> {
+        let session_key = extract_session_key_from_req(&req)?;
+        let alert_id = alert_id.into_inner();
 
-    let guard = ALERTS.write().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
-
-    // check if alert id exists in map
-    let alert = alerts.get_alert_by_id(alert_id).await?;
-    // validate that the user has access to the tables mentioned in the query
-    user_auth_for_query(&session_key, alert.get_query()).await?;
-
-    alerts
-        .update_state(alert_id, AlertState::Disabled, Some("".into()))
-        .await?;
-    let alert = alerts.get_alert_by_id(alert_id).await?;
-
-    Ok(web::Json(alert.to_alert_config().to_response()))
-}
-}
-
-enable_alert! {
-/// Enable alert
-///
-/// Re-enables a previously disabled alert.
-pub async fn enable_alert(
-    req: HttpRequest,
-    alert_id: Path<Ulid>,
-) -> Result<impl Responder, AlertError> {
-    let session_key = extract_session_key_from_req(&req)?;
-    let alert_id = alert_id.into_inner();
-
-    let guard = ALERTS.write().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
-
-    // check if alert id exists in map
-    let alert = alerts.get_alert_by_id(alert_id).await?;
-
-    // only run if alert is disabled
-    if alert.get_state().ne(&AlertState::Disabled) {
-        return Err(AlertError::InvalidStateChange(
-            "Can't enable an alert which is not currently disabled".into(),
-        ));
-    }
-
-    // validate that the user has access to the tables mentioned in the query
-    user_auth_for_query(&session_key, alert.get_query()).await?;
-
-    alerts
-        .update_state(alert_id, AlertState::NotTriggered, Some("".into()))
-        .await?;
-    let alert = alerts.get_alert_by_id(alert_id).await?;
-
-    Ok(web::Json(alert.to_alert_config().to_response()))
-}
-}
-
-modify_alert! {
-/// Modify alert
-///
-/// Updates an existing alert's configuration.
-pub async fn modify_alert(
-    req: HttpRequest,
-    alert_id: Path<Ulid>,
-    Json(alert_request): Json<AlertRequest>,
-) -> Result<impl Responder, AlertError> {
-    let session_key = extract_session_key_from_req(&req)?;
-    let alert_id = alert_id.into_inner();
-
-    // Get alerts manager reference without holding the global lock
-    let alerts = {
-        let guard = ALERTS.read().await;
-        if let Some(alerts) = guard.as_ref() {
-            alerts.clone()
+        let guard = ALERTS.write().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
         } else {
             return Err(AlertError::CustomError("No AlertManager set".into()));
-        }
-    };
+        };
 
-    // Validate and prepare the new alert
-    let alert = alerts.get_alert_by_id(alert_id).await?;
-    user_auth_for_query(&session_key, alert.get_query()).await?;
+        // check if alert id exists in map
+        let alert = alerts.get_alert_by_id(alert_id).await?;
+        // validate that the user has access to the tables mentioned in the query
+        user_auth_for_query(&session_key, alert.get_query()).await?;
 
-    let mut new_config = alert_request.into().await?;
-    if &new_config.alert_type != alert.get_alert_type() {
-        return Err(AlertError::InvalidAlertModifyRequest);
+        alerts
+            .update_state(alert_id, AlertState::Disabled, Some("".into()))
+            .await?;
+        let alert = alerts.get_alert_by_id(alert_id).await?;
+
+        Ok(web::Json(alert.to_alert_config().to_response()))
     }
-
-    user_auth_for_query(&session_key, &new_config.query).await?;
-
-    // Calculate notification config
-    let eval_freq = new_config.get_eval_frequency();
-    let notif_freq = new_config.notification_config.interval;
-    let times = if (eval_freq / notif_freq) == 0 {
-        1
-    } else {
-        (eval_freq / notif_freq) as usize
-    };
-    new_config.notification_config.times = Retry::Finite(times);
-
-    // Prepare the updated config
-    let mut old_config = alert.to_alert_config();
-    old_config.threshold_config = new_config.threshold_config;
-    old_config.datasets = new_config.datasets;
-    old_config.eval_config = new_config.eval_config;
-    old_config.notification_config = new_config.notification_config;
-    old_config.query = new_config.query;
-    old_config.severity = new_config.severity;
-    old_config.tags = new_config.tags;
-    old_config.targets = new_config.targets;
-    old_config.title = new_config.title;
-
-    let new_alert: Box<dyn AlertTrait> = match &new_config.alert_type {
-        AlertType::Threshold => Box::new(ThresholdAlert::from(old_config)) as Box<dyn AlertTrait>,
-        AlertType::Anomaly(_) => {
-            return Err(AlertError::NotPresentInOSS("anomaly"));
-        }
-        AlertType::Forecast(_) => {
-            return Err(AlertError::NotPresentInOSS("forecast"));
-        }
-    };
-
-    new_alert.validate(&session_key).await?;
-
-    // Perform I/O operations
-    PARSEABLE
-        .metastore
-        .put_alert(&new_alert.to_alert_config())
-        .await?;
-
-    let is_disabled = new_alert.get_state().eq(&AlertState::Disabled);
-    // Now perform the atomic operations
-    alerts.delete_task(alert_id).await?;
-    alerts.delete(alert_id).await?;
-    alerts.update(&*new_alert).await;
-
-    // only restart the task if the state was not set to disabled
-    if !is_disabled {
-        alerts.start_task(new_alert.clone_box()).await?;
-    }
-
-    let config = new_alert.to_alert_config().to_response();
-    Ok(web::Json(config))
 }
+
+doc_enable_alert! {
+    /// Enable alert
+    ///
+    /// Re-enables a previously disabled alert.
+    pub async fn enable_alert(
+        req: HttpRequest,
+        alert_id: Path<Ulid>,
+    ) -> Result<impl Responder, AlertError> {
+        let session_key = extract_session_key_from_req(&req)?;
+        let alert_id = alert_id.into_inner();
+
+        let guard = ALERTS.write().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
+        } else {
+            return Err(AlertError::CustomError("No AlertManager set".into()));
+        };
+
+        // check if alert id exists in map
+        let alert = alerts.get_alert_by_id(alert_id).await?;
+
+        // only run if alert is disabled
+        if alert.get_state().ne(&AlertState::Disabled) {
+            return Err(AlertError::InvalidStateChange(
+                "Can't enable an alert which is not currently disabled".into(),
+            ));
+        }
+
+        // validate that the user has access to the tables mentioned in the query
+        user_auth_for_query(&session_key, alert.get_query()).await?;
+
+        alerts
+            .update_state(alert_id, AlertState::NotTriggered, Some("".into()))
+            .await?;
+        let alert = alerts.get_alert_by_id(alert_id).await?;
+
+        Ok(web::Json(alert.to_alert_config().to_response()))
+    }
+}
+
+doc_modify_alert! {
+    /// Modify alert
+    ///
+    /// Updates an existing alert's configuration.
+    pub async fn modify_alert(
+        req: HttpRequest,
+        alert_id: Path<Ulid>,
+        Json(alert_request): Json<AlertRequest>,
+    ) -> Result<impl Responder, AlertError> {
+        let session_key = extract_session_key_from_req(&req)?;
+        let alert_id = alert_id.into_inner();
+
+        // Get alerts manager reference without holding the global lock
+        let alerts = {
+            let guard = ALERTS.read().await;
+            if let Some(alerts) = guard.as_ref() {
+                alerts.clone()
+            } else {
+                return Err(AlertError::CustomError("No AlertManager set".into()));
+            }
+        };
+
+        // Validate and prepare the new alert
+        let alert = alerts.get_alert_by_id(alert_id).await?;
+        user_auth_for_query(&session_key, alert.get_query()).await?;
+
+        let mut new_config = alert_request.into().await?;
+        if &new_config.alert_type != alert.get_alert_type() {
+            return Err(AlertError::InvalidAlertModifyRequest);
+        }
+
+        user_auth_for_query(&session_key, &new_config.query).await?;
+
+        // Calculate notification config
+        let eval_freq = new_config.get_eval_frequency();
+        let notif_freq = new_config.notification_config.interval;
+        let times = if (eval_freq / notif_freq) == 0 {
+            1
+        } else {
+            (eval_freq / notif_freq) as usize
+        };
+        new_config.notification_config.times = Retry::Finite(times);
+
+        // Prepare the updated config
+        let mut old_config = alert.to_alert_config();
+        old_config.threshold_config = new_config.threshold_config;
+        old_config.datasets = new_config.datasets;
+        old_config.eval_config = new_config.eval_config;
+        old_config.notification_config = new_config.notification_config;
+        old_config.query = new_config.query;
+        old_config.severity = new_config.severity;
+        old_config.tags = new_config.tags;
+        old_config.targets = new_config.targets;
+        old_config.title = new_config.title;
+
+        let new_alert: Box<dyn AlertTrait> = match &new_config.alert_type {
+            AlertType::Threshold => Box::new(ThresholdAlert::from(old_config)) as Box<dyn AlertTrait>,
+            AlertType::Anomaly(_) => {
+                return Err(AlertError::NotPresentInOSS("anomaly"));
+            }
+            AlertType::Forecast(_) => {
+                return Err(AlertError::NotPresentInOSS("forecast"));
+            }
+        };
+
+        new_alert.validate(&session_key).await?;
+
+        // Perform I/O operations
+        PARSEABLE
+            .metastore
+            .put_alert(&new_alert.to_alert_config())
+            .await?;
+
+        let is_disabled = new_alert.get_state().eq(&AlertState::Disabled);
+        // Now perform the atomic operations
+        alerts.delete_task(alert_id).await?;
+        alerts.delete(alert_id).await?;
+        alerts.update(&*new_alert).await;
+
+        // only restart the task if the state was not set to disabled
+        if !is_disabled {
+            alerts.start_task(new_alert.clone_box()).await?;
+        }
+
+        let config = new_alert.to_alert_config().to_response();
+        Ok(web::Json(config))
+    }
 }
 
 /// Evaluate alert immediately
@@ -667,18 +666,18 @@ pub async fn evaluate_alert(
     Ok(Json(config))
 }
 
-list_alert_tags! {
-/// List alert tags
-///
-/// Returns all unique tags used across alerts.
-pub async fn list_tags() -> Result<impl Responder, AlertError> {
-    let guard = ALERTS.read().await;
-    let alerts = if let Some(alerts) = guard.as_ref() {
-        alerts
-    } else {
-        return Err(AlertError::CustomError("No AlertManager set".into()));
-    };
-    let tags = alerts.list_tags().await;
-    Ok(web::Json(tags))
-}
+doc_list_alert_tags! {
+    /// List alert tags
+    ///
+    /// Returns all unique tags used across alerts.
+    pub async fn list_tags() -> Result<impl Responder, AlertError> {
+        let guard = ALERTS.read().await;
+        let alerts = if let Some(alerts) = guard.as_ref() {
+            alerts
+        } else {
+            return Err(AlertError::CustomError("No AlertManager set".into()));
+        };
+        let tags = alerts.list_tags().await;
+        Ok(web::Json(tags))
+    }
 }

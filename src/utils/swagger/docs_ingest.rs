@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! ingest_events {
+macro_rules! doc_ingest_events {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -47,7 +47,7 @@ macro_rules! ingest_events {
 }
 
 #[macro_export]
-macro_rules! ingest_to_stream {
+macro_rules! doc_ingest_to_stream {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -78,7 +78,7 @@ macro_rules! ingest_to_stream {
 }
 
 #[macro_export]
-macro_rules! ingest_otel_logs {
+macro_rules! doc_ingest_otel_logs {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -106,7 +106,7 @@ macro_rules! ingest_otel_logs {
 }
 
 #[macro_export]
-macro_rules! ingest_otel_metrics {
+macro_rules! doc_ingest_otel_metrics {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -134,7 +134,7 @@ macro_rules! ingest_otel_metrics {
 }
 
 #[macro_export]
-macro_rules! ingest_otel_traces {
+macro_rules! doc_ingest_otel_traces {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,

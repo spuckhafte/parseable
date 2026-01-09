@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_filters {
+macro_rules! doc_list_filters {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -38,7 +38,7 @@ macro_rules! list_filters {
 }
 
 #[macro_export]
-macro_rules! get_filter_by_id {
+macro_rules! doc_get_filter_by_id {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -64,7 +64,7 @@ macro_rules! get_filter_by_id {
 }
 
 #[macro_export]
-macro_rules! create_filter {
+macro_rules! doc_create_filter {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -88,7 +88,7 @@ macro_rules! create_filter {
 }
 
 #[macro_export]
-macro_rules! update_filter {
+macro_rules! doc_update_filter {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -116,7 +116,7 @@ macro_rules! update_filter {
 }
 
 #[macro_export]
-macro_rules! delete_filter {
+macro_rules! doc_delete_filter {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,
@@ -140,7 +140,3 @@ macro_rules! delete_filter {
         $($item)*
     };
 }
-
-// ============================================================================
-// DASHBOARDS ENDPOINTS
-// ============================================================================

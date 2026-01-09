@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_users {
+macro_rules! doc_list_users {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -38,7 +38,7 @@ macro_rules! list_users {
 }
 
 #[macro_export]
-macro_rules! list_users_detailed {
+macro_rules! doc_list_users_detailed {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -59,7 +59,7 @@ macro_rules! list_users_detailed {
 }
 
 #[macro_export]
-macro_rules! get_user_by_name {
+macro_rules! doc_get_user_by_name {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -84,7 +84,7 @@ macro_rules! get_user_by_name {
 }
 
 #[macro_export]
-macro_rules! create_user {
+macro_rules! doc_create_user {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -110,7 +110,7 @@ macro_rules! create_user {
 }
 
 #[macro_export]
-macro_rules! reset_user_password {
+macro_rules! doc_reset_user_password {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -135,7 +135,7 @@ macro_rules! reset_user_password {
 }
 
 #[macro_export]
-macro_rules! get_user_roles {
+macro_rules! doc_get_user_roles {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -160,7 +160,7 @@ macro_rules! get_user_roles {
 }
 
 #[macro_export]
-macro_rules! add_user_roles {
+macro_rules! doc_add_user_roles {
     ($($item:tt)*) => {
         #[utoipa::path(
             patch,
@@ -187,7 +187,7 @@ macro_rules! add_user_roles {
 }
 
 #[macro_export]
-macro_rules! remove_user_roles {
+macro_rules! doc_remove_user_roles {
     ($($item:tt)*) => {
         #[utoipa::path(
             patch,
@@ -214,7 +214,7 @@ macro_rules! remove_user_roles {
 }
 
 #[macro_export]
-macro_rules! delete_user {
+macro_rules! doc_delete_user {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,
@@ -238,7 +238,3 @@ macro_rules! delete_user {
         $($item)*
     };
 }
-
-// ============================================================================
-// QUERY ENDPOINTS
-// ============================================================================

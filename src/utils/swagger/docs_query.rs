@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! execute_query {
+macro_rules! doc_execute_query {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -42,7 +42,7 @@ macro_rules! execute_query {
 }
 
 #[macro_export]
-macro_rules! get_counts {
+macro_rules! doc_get_counts {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,

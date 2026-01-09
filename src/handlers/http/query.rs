@@ -17,7 +17,7 @@
  */
 
 // Import swagger documentation macros
-use crate::{execute_query, get_counts};
+use crate::{doc_execute_query, doc_get_counts};
 
 use crate::event::error::EventError;
 use crate::handlers::http::fetch_schema;
@@ -111,7 +111,7 @@ pub async fn get_records_and_fields(
     Ok((Some(records), Some(fields)))
 }
 
-execute_query! {
+doc_execute_query! {
 pub async fn query(req: HttpRequest, query_request: Query) -> Result<HttpResponse, QueryError> {
     let session_state = QUERY_SESSION.state();
     let time_range =
@@ -346,7 +346,7 @@ fn create_batch_processor(
 }
 }
 
-get_counts! {
+doc_get_counts! {
 pub async fn get_counts(
     req: HttpRequest,
     counts_request: Json<CountsRequest>,

@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_alerts {
+macro_rules! doc_list_alerts {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -39,7 +39,7 @@ macro_rules! list_alerts {
 }
 
 #[macro_export]
-macro_rules! get_alert_by_id {
+macro_rules! doc_get_alert_by_id {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -65,7 +65,7 @@ macro_rules! get_alert_by_id {
 }
 
 #[macro_export]
-macro_rules! create_alert {
+macro_rules! doc_create_alert {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -89,7 +89,7 @@ macro_rules! create_alert {
 }
 
 #[macro_export]
-macro_rules! modify_alert {
+macro_rules! doc_modify_alert {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -117,7 +117,7 @@ macro_rules! modify_alert {
 }
 
 #[macro_export]
-macro_rules! delete_alert {
+macro_rules! doc_delete_alert {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,
@@ -143,7 +143,7 @@ macro_rules! delete_alert {
 }
 
 #[macro_export]
-macro_rules! disable_alert {
+macro_rules! doc_disable_alert {
     ($($item:tt)*) => {
         #[utoipa::path(
             patch,
@@ -169,7 +169,7 @@ macro_rules! disable_alert {
 }
 
 #[macro_export]
-macro_rules! enable_alert {
+macro_rules! doc_enable_alert {
     ($($item:tt)*) => {
         #[utoipa::path(
             patch,
@@ -196,7 +196,7 @@ macro_rules! enable_alert {
 }
 
 #[macro_export]
-macro_rules! list_alert_tags {
+macro_rules! doc_list_alert_tags {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -215,7 +215,3 @@ macro_rules! list_alert_tags {
         $($item)*
     };
 }
-
-// ============================================================================
-// FILTERS ENDPOINTS
-// ============================================================================

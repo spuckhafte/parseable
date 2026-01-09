@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_roles {
+macro_rules! doc_list_roles {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -38,7 +38,7 @@ macro_rules! list_roles {
 }
 
 #[macro_export]
-macro_rules! get_role_by_name {
+macro_rules! doc_get_role_by_name {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -62,7 +62,7 @@ macro_rules! get_role_by_name {
 }
 
 #[macro_export]
-macro_rules! put_role {
+macro_rules! doc_put_role {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -88,7 +88,7 @@ macro_rules! put_role {
 }
 
 #[macro_export]
-macro_rules! delete_role {
+macro_rules! doc_delete_role {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,
@@ -113,7 +113,7 @@ macro_rules! delete_role {
 }
 
 #[macro_export]
-macro_rules! list_roles_detailed {
+macro_rules! doc_list_roles_detailed {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -134,7 +134,7 @@ macro_rules! list_roles_detailed {
 }
 
 #[macro_export]
-macro_rules! get_default_role {
+macro_rules! doc_get_default_role {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -155,7 +155,7 @@ macro_rules! get_default_role {
 }
 
 #[macro_export]
-macro_rules! put_default_role {
+macro_rules! doc_put_default_role {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -175,7 +175,3 @@ macro_rules! put_default_role {
         $($item)*
     };
 }
-
-// ============================================================================
-// ALERTS ENDPOINTS
-// ============================================================================

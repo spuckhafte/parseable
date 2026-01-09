@@ -17,13 +17,12 @@
  */
 
 use crate::{
-    create_filter, delete_filter, get_filter_by_id,
+    doc_create_filter, doc_delete_filter, doc_get_filter_by_id, doc_list_filters,
+    doc_update_filter,
     handlers::http::rbac::RBACError,
-    list_filters,
     metastore::MetastoreError,
     parseable::PARSEABLE,
     storage::ObjectStorageError,
-    update_filter,
     users::filters::{CURRENT_FILTER_VERSION, FILTERS, Filter},
     utils::{actix::extract_session_key_from_req, get_hash, get_user_from_request, is_admin},
 };
@@ -36,122 +35,122 @@ use http::StatusCode;
 use serde_json::Error as SerdeError;
 use ulid::Ulid;
 
-list_filters! {
-/// List filters
-///
-/// Returns all filters accessible by the current user.
-pub async fn list(req: HttpRequest) -> Result<impl Responder, FiltersError> {
-    let key =
-        extract_session_key_from_req(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
-    let filters = FILTERS.list_filters(&key).await;
-    Ok((web::Json(filters), StatusCode::OK))
-}
-}
-
-get_filter_by_id! {
-/// Get filter
-///
-/// Retrieves a specific filter by ID.
-pub async fn get(
-    req: HttpRequest,
-    filter_id: Path<String>,
-) -> Result<impl Responder, FiltersError> {
-    let user_id = get_user_from_request(&req)?;
-    let filter_id = filter_id.into_inner();
-    let is_admin = is_admin(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
-    if let Some(filter) = FILTERS
-        .get_filter(&filter_id, &get_hash(&user_id), is_admin)
-        .await
-    {
-        return Ok((web::Json(filter), StatusCode::OK));
+doc_list_filters! {
+    /// List filters
+    ///
+    /// Returns all filters accessible by the current user.
+    pub async fn list(req: HttpRequest) -> Result<impl Responder, FiltersError> {
+        let key =
+            extract_session_key_from_req(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
+        let filters = FILTERS.list_filters(&key).await;
+        Ok((web::Json(filters), StatusCode::OK))
     }
-
-    Err(FiltersError::Metadata(
-        "Filter does not exist or user is not authorized",
-    ))
-}
 }
 
-create_filter! {
-/// Create filter
-///
-/// Creates a new filter with specified query and stream.
-pub async fn post(
-    req: HttpRequest,
-    Json(mut filter): Json<Filter>,
-) -> Result<impl Responder, FiltersError> {
-    let mut user_id = get_user_from_request(&req)?;
-    user_id = get_hash(&user_id);
-    let filter_id = Ulid::new().to_string();
-    filter.filter_id = Some(filter_id.clone());
-    filter.user_id = Some(user_id.clone());
-    filter.version = Some(CURRENT_FILTER_VERSION.to_string());
+doc_get_filter_by_id! {
+    /// Get filter
+    ///
+    /// Retrieves a specific filter by ID.
+    pub async fn get(
+        req: HttpRequest,
+        filter_id: Path<String>,
+    ) -> Result<impl Responder, FiltersError> {
+        let user_id = get_user_from_request(&req)?;
+        let filter_id = filter_id.into_inner();
+        let is_admin = is_admin(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
+        if let Some(filter) = FILTERS
+            .get_filter(&filter_id, &get_hash(&user_id), is_admin)
+            .await
+        {
+            return Ok((web::Json(filter), StatusCode::OK));
+        }
 
-    PARSEABLE.metastore.put_filter(&filter).await?;
-    FILTERS.update(&filter).await;
-
-    Ok((web::Json(filter), StatusCode::OK))
-}
-}
-
-update_filter! {
-/// Update filter
-///
-/// Updates an existing filter's configuration.
-pub async fn update(
-    req: HttpRequest,
-    filter_id: Path<String>,
-    Json(mut filter): Json<Filter>,
-) -> Result<impl Responder, FiltersError> {
-    let mut user_id = get_user_from_request(&req)?;
-    user_id = get_hash(&user_id);
-    let filter_id = filter_id.into_inner();
-    let is_admin = is_admin(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
-
-    if FILTERS
-        .get_filter(&filter_id, &user_id, is_admin)
-        .await
-        .is_none()
-    {
-        return Err(FiltersError::Metadata(
+        Err(FiltersError::Metadata(
             "Filter does not exist or user is not authorized",
-        ));
+        ))
     }
-    filter.filter_id = Some(filter_id.clone());
-    filter.user_id = Some(user_id.clone());
-    filter.version = Some(CURRENT_FILTER_VERSION.to_string());
-
-    PARSEABLE.metastore.put_filter(&filter).await?;
-    FILTERS.update(&filter).await;
-
-    Ok((web::Json(filter), StatusCode::OK))
-}
 }
 
-delete_filter! {
-/// Delete filter
-///
-/// Permanently deletes a filter.
-pub async fn delete(
-    req: HttpRequest,
-    filter_id: Path<String>,
-) -> Result<HttpResponse, FiltersError> {
-    let mut user_id = get_user_from_request(&req)?;
-    user_id = get_hash(&user_id);
-    let filter_id = filter_id.into_inner();
-    let is_admin = is_admin(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
-    let filter = FILTERS
-        .get_filter(&filter_id, &user_id, is_admin)
-        .await
-        .ok_or(FiltersError::Metadata(
-            "Filter does not exist or user is not authorized",
-        ))?;
+doc_create_filter! {
+    /// Create filter
+    ///
+    /// Creates a new filter with specified query and stream.
+    pub async fn post(
+        req: HttpRequest,
+        Json(mut filter): Json<Filter>,
+    ) -> Result<impl Responder, FiltersError> {
+        let mut user_id = get_user_from_request(&req)?;
+        user_id = get_hash(&user_id);
+        let filter_id = Ulid::new().to_string();
+        filter.filter_id = Some(filter_id.clone());
+        filter.user_id = Some(user_id.clone());
+        filter.version = Some(CURRENT_FILTER_VERSION.to_string());
 
-    PARSEABLE.metastore.delete_filter(&filter).await?;
-    FILTERS.delete_filter(&filter_id).await;
+        PARSEABLE.metastore.put_filter(&filter).await?;
+        FILTERS.update(&filter).await;
 
-    Ok(HttpResponse::Ok().finish())
+        Ok((web::Json(filter), StatusCode::OK))
+    }
 }
+
+doc_update_filter! {
+    /// Update filter
+    ///
+    /// Updates an existing filter's configuration.
+    pub async fn update(
+        req: HttpRequest,
+        filter_id: Path<String>,
+        Json(mut filter): Json<Filter>,
+    ) -> Result<impl Responder, FiltersError> {
+        let mut user_id = get_user_from_request(&req)?;
+        user_id = get_hash(&user_id);
+        let filter_id = filter_id.into_inner();
+        let is_admin = is_admin(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
+
+        if FILTERS
+            .get_filter(&filter_id, &user_id, is_admin)
+            .await
+            .is_none()
+        {
+            return Err(FiltersError::Metadata(
+                "Filter does not exist or user is not authorized",
+            ));
+        }
+        filter.filter_id = Some(filter_id.clone());
+        filter.user_id = Some(user_id.clone());
+        filter.version = Some(CURRENT_FILTER_VERSION.to_string());
+
+        PARSEABLE.metastore.put_filter(&filter).await?;
+        FILTERS.update(&filter).await;
+
+        Ok((web::Json(filter), StatusCode::OK))
+    }
+}
+
+doc_delete_filter! {
+    /// Delete filter
+    ///
+    /// Permanently deletes a filter.
+    pub async fn delete(
+        req: HttpRequest,
+        filter_id: Path<String>,
+    ) -> Result<HttpResponse, FiltersError> {
+        let mut user_id = get_user_from_request(&req)?;
+        user_id = get_hash(&user_id);
+        let filter_id = filter_id.into_inner();
+        let is_admin = is_admin(&req).map_err(|e| FiltersError::Custom(e.to_string()))?;
+        let filter = FILTERS
+            .get_filter(&filter_id, &user_id, is_admin)
+            .await
+            .ok_or(FiltersError::Metadata(
+                "Filter does not exist or user is not authorized",
+            ))?;
+
+        PARSEABLE.metastore.delete_filter(&filter).await?;
+        FILTERS.delete_filter(&filter_id).await;
+
+        Ok(HttpResponse::Ok().finish())
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

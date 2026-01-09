@@ -87,11 +87,9 @@ impl ParseableServer for QueryServer {
                     .service(Server::get_prism_logstream())
                     .service(Server::get_prism_datasets()),
             )
-
             // api docs with swagger
             .service(
-                SwaggerUi::new("/docs/{_:.*}")
-                    .url("/api-docs/openapi.json", ApiDoc::openapi()),
+                SwaggerUi::new("/docs/{_:.*}").url("/api-docs/openapi.json", ApiDoc::openapi()),
             )
             .service(Server::get_generated());
     }

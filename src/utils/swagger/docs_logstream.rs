@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_logstreams {
+macro_rules! doc_list_logstreams {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -39,7 +39,7 @@ macro_rules! list_logstreams {
 }
 
 #[macro_export]
-macro_rules! delete_logstream {
+macro_rules! doc_delete_logstream {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,
@@ -65,7 +65,7 @@ macro_rules! delete_logstream {
 }
 
 #[macro_export]
-macro_rules! detect_logstream_schema {
+macro_rules! doc_detect_logstream_schema {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -88,7 +88,7 @@ macro_rules! detect_logstream_schema {
 }
 
 #[macro_export]
-macro_rules! get_logstream_schema {
+macro_rules! doc_get_logstream_schema {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -114,7 +114,7 @@ macro_rules! get_logstream_schema {
 }
 
 #[macro_export]
-macro_rules! put_logstream {
+macro_rules! doc_put_logstream {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -149,7 +149,7 @@ macro_rules! put_logstream {
 }
 
 #[macro_export]
-macro_rules! get_logstream_retention {
+macro_rules! doc_get_logstream_retention {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -174,7 +174,7 @@ macro_rules! get_logstream_retention {
 }
 
 #[macro_export]
-macro_rules! put_logstream_retention {
+macro_rules! doc_put_logstream_retention {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -201,7 +201,7 @@ macro_rules! put_logstream_retention {
 }
 
 #[macro_export]
-macro_rules! get_logstream_stats {
+macro_rules! doc_get_logstream_stats {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -228,7 +228,7 @@ macro_rules! get_logstream_stats {
 }
 
 #[macro_export]
-macro_rules! get_logstream_info {
+macro_rules! doc_get_logstream_info {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -253,7 +253,7 @@ macro_rules! get_logstream_info {
 }
 
 #[macro_export]
-macro_rules! put_logstream_hottier {
+macro_rules! doc_put_logstream_hottier {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -281,7 +281,7 @@ macro_rules! put_logstream_hottier {
 }
 
 #[macro_export]
-macro_rules! get_logstream_hottier {
+macro_rules! doc_get_logstream_hottier {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -307,7 +307,7 @@ macro_rules! get_logstream_hottier {
 }
 
 #[macro_export]
-macro_rules! delete_logstream_hottier {
+macro_rules! doc_delete_logstream_hottier {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,

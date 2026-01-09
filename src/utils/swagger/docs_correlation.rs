@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! list_correlations {
+macro_rules! doc_list_correlations {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -38,7 +38,7 @@ macro_rules! list_correlations {
 }
 
 #[macro_export]
-macro_rules! get_correlation_by_id {
+macro_rules! doc_get_correlation_by_id {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -64,7 +64,7 @@ macro_rules! get_correlation_by_id {
 }
 
 #[macro_export]
-macro_rules! create_correlation {
+macro_rules! doc_create_correlation {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -88,7 +88,7 @@ macro_rules! create_correlation {
 }
 
 #[macro_export]
-macro_rules! modify_correlation {
+macro_rules! doc_modify_correlation {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -116,7 +116,7 @@ macro_rules! modify_correlation {
 }
 
 #[macro_export]
-macro_rules! delete_correlation {
+macro_rules! doc_delete_correlation {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,

@@ -19,8 +19,8 @@
 use std::collections::{HashMap, HashSet};
 
 use crate::{
-    add_user_roles, create_user, delete_user, get_user_by_name, get_user_roles, list_users,
-    list_users_detailed,
+    doc_add_user_roles, doc_create_user, doc_delete_user, doc_get_user_by_name, doc_get_user_roles,
+    doc_list_users, doc_list_users_detailed, doc_remove_user_roles, doc_reset_user_password,
     rbac::{
         self, Users,
         map::{read_user_groups, roles, users},
@@ -28,7 +28,6 @@ use crate::{
         user::{self, UserType},
         utils::to_prism_user,
     },
-    remove_user_roles, reset_user_password,
     storage::ObjectStorageError,
     validator::{self, error::UsernameValidationError},
 };
@@ -68,336 +67,336 @@ impl From<&user::User> for User {
     }
 }
 
-list_users! {
-/// List all users
-///
-/// Returns a list of all registered users with their ID and authentication method.
-pub async fn list_users() -> impl Responder {
-    web::Json(Users.collect_user::<User>())
-}
-}
-
-list_users_detailed! {
-/// List all users with detailed information
-///
-/// Returns comprehensive user information including roles and group memberships.
-pub async fn list_users_prism() -> impl Responder {
-    // get all users
-    let prism_users = rbac::map::users().values().map(to_prism_user).collect_vec();
-
-    web::Json(prism_users)
-}
-}
-
-get_user_by_name! {
-/// Get user details
-///
-/// Returns detailed information for a specific user including roles and permissions.
-pub async fn get_prism_user(username: Path<String>) -> Result<impl Responder, RBACError> {
-    let username = username.into_inner();
-    // First check if the user exists
-    let users = rbac::map::users();
-    if let Some(user) = users.get(&username) {
-        // Create UsersPrism for the found user only
-        let prism_user = to_prism_user(user);
-        Ok(web::Json(prism_user))
-    } else {
-        Err(RBACError::UserDoesNotExist)
+doc_list_users! {
+    /// List all users
+    ///
+    /// Returns a list of all registered users with their ID and authentication method.
+    pub async fn list_users() -> impl Responder {
+        web::Json(Users.collect_user::<User>())
     }
 }
+
+doc_list_users_detailed! {
+    /// List all users with detailed information
+    ///
+    /// Returns comprehensive user information including roles and group memberships.
+    pub async fn list_users_prism() -> impl Responder {
+        // get all users
+        let prism_users = rbac::map::users().values().map(to_prism_user).collect_vec();
+
+        web::Json(prism_users)
+    }
 }
 
-create_user! {
-/// Create new user
-///
-/// Creates a new user with optional role assignments. Returns a generated password for native users.
-pub async fn post_user(
-    username: web::Path<String>,
-    body: Option<web::Json<serde_json::Value>>,
-) -> Result<impl Responder, RBACError> {
-    let username = username.into_inner();
-    validator::user_role_name(&username)?;
-    let mut metadata = get_metadata().await?;
-
-    let user_roles: HashSet<String> = if let Some(body) = body {
-        serde_json::from_value(body.into_inner())?
-    } else {
-        HashSet::new()
-    };
-
-    let mut non_existent_roles = Vec::new();
-    for role in &user_roles {
-        if !roles().contains_key(role) {
-            non_existent_roles.push(role.clone());
+doc_get_user_by_name! {
+    /// Get user details
+    ///
+    /// Returns detailed information for a specific user including roles and permissions.
+    pub async fn get_prism_user(username: Path<String>) -> Result<impl Responder, RBACError> {
+        let username = username.into_inner();
+        // First check if the user exists
+        let users = rbac::map::users();
+        if let Some(user) = users.get(&username) {
+            // Create UsersPrism for the found user only
+            let prism_user = to_prism_user(user);
+            Ok(web::Json(prism_user))
+        } else {
+            Err(RBACError::UserDoesNotExist)
         }
     }
-    if !non_existent_roles.is_empty() {
-        return Err(RBACError::RolesDoNotExist(non_existent_roles));
-    }
-    let _guard = UPDATE_LOCK.lock().await;
-    if Users.contains(&username)
-        || metadata.users.iter().any(|user| match &user.ty {
-            UserType::Native(basic) => basic.username == username,
-            UserType::OAuth(_) => false, // OAuth users should be created differently
-        })
-    {
-        return Err(RBACError::UserExists(username));
-    }
-
-    let (user, password) = user::User::new_basic(username.clone());
-
-    metadata.users.push(user.clone());
-
-    put_metadata(&metadata).await?;
-    let created_role = user_roles.clone();
-    Users.put_user(user.clone());
-    if !created_role.is_empty() {
-        add_roles_to_user(
-            web::Path::<String>::from(username.clone()),
-            web::Json(created_role),
-        )
-        .await?;
-    }
-
-    Ok(password)
-}
 }
 
-reset_user_password! {
-/// Generate new password
-///
-/// Generates and returns a new password for an existing user.
-pub async fn post_gen_password(username: web::Path<String>) -> Result<impl Responder, RBACError> {
-    let username = username.into_inner();
-    let mut new_password = String::default();
-    let mut new_hash = String::default();
-    let mut metadata = get_metadata().await?;
+doc_create_user! {
+    /// Create new user
+    ///
+    /// Creates a new user with optional role assignments. Returns a generated password for native users.
+    pub async fn post_user(
+        username: web::Path<String>,
+        body: Option<web::Json<serde_json::Value>>,
+    ) -> Result<impl Responder, RBACError> {
+        let username = username.into_inner();
+        validator::user_role_name(&username)?;
+        let mut metadata = get_metadata().await?;
 
-    let _guard = UPDATE_LOCK.lock().await;
-    let user::PassCode { password, hash } = user::Basic::gen_new_password();
-    new_password.clone_from(&password);
-    new_hash.clone_from(&hash);
-    if let Some(user) = metadata
-        .users
-        .iter_mut()
-        .filter_map(|user| match user.ty {
-            user::UserType::Native(ref mut user) => Some(user),
-            _ => None,
-        })
-        .find(|user| user.username == username)
-    {
-        user.password_hash.clone_from(&hash);
-    } else {
-        return Err(RBACError::UserDoesNotExist);
-    }
-    put_metadata(&metadata).await?;
-    Users.change_password_hash(&username, &new_hash);
+        let user_roles: HashSet<String> = if let Some(body) = body {
+            serde_json::from_value(body.into_inner())?
+        } else {
+            HashSet::new()
+        };
 
-    Ok(new_password)
-}
-}
-
-get_user_roles! {
-/// Get user roles
-///
-/// Returns all roles assigned to a user, both directly and through group memberships.
-pub async fn get_role(userid: web::Path<String>) -> Result<impl Responder, RBACError> {
-    let userid = userid.into_inner();
-    if !Users.contains(&userid) {
-        return Err(RBACError::UserDoesNotExist);
-    };
-    let direct_roles: HashMap<String, Vec<DefaultPrivilege>> = Users
-        .get_role(&userid)
-        .iter()
-        .filter_map(|role_name| {
-            roles()
-                .get(role_name)
-                .map(|role| (role_name.to_owned(), role.clone()))
-        })
-        .collect();
-
-    let mut group_roles: HashMap<String, HashMap<String, Vec<DefaultPrivilege>>> = HashMap::new();
-    // user might be part of some user groups, fetch the roles from there as well
-    for user_group in Users.get_user_groups(&userid) {
-        if let Some(group) = read_user_groups().get(&user_group) {
-            let ug_roles: HashMap<String, Vec<DefaultPrivilege>> = group
-                .roles
-                .iter()
-                .filter_map(|role_name| {
-                    roles()
-                        .get(role_name)
-                        .map(|role| (role_name.to_owned(), role.clone()))
-                })
-                .collect();
-            group_roles.insert(group.name.clone(), ug_roles);
+        let mut non_existent_roles = Vec::new();
+        for role in &user_roles {
+            if !roles().contains_key(role) {
+                non_existent_roles.push(role.clone());
+            }
         }
-    }
-    let res = RolesResponse {
-        direct_roles,
-        group_roles,
-    };
-    Ok(web::Json(res))
-}
-}
-
-delete_user! {
-/// Delete user
-///
-/// Permanently deletes a user account. User must not be a member of any user groups.
-pub async fn delete_user(userid: web::Path<String>) -> Result<impl Responder, RBACError> {
-    let userid = userid.into_inner();
-    let _guard = UPDATE_LOCK.lock().await;
-    // if user is a part of any groups then don't allow deletion
-    if !Users.get_user_groups(&userid).is_empty() {
-        return Err(RBACError::InvalidDeletionRequest(format!(
-            "User: {userid} should not be a part of any groups"
-        )));
-    }
-    // fail this request if the user does not exists
-    if !Users.contains(&userid) {
-        return Err(RBACError::UserDoesNotExist);
-    };
-
-    // find username by userid, for native users, username is userid, for oauth users, we need to look up
-    let username = if let Some(user) = users().get(&userid) {
-        user.username_by_userid()
-    } else {
-        return Err(RBACError::UserDoesNotExist);
-    };
-
-    // delete from parseable.json first
-    let mut metadata = get_metadata().await?;
-    metadata.users.retain(|user| user.userid() != userid);
-    put_metadata(&metadata).await?;
-
-    // update in mem table
-    Users.delete_user(&userid);
-    Ok(HttpResponse::Ok().json(format!("deleted user: {username}")))
-}
-}
-
-add_user_roles! {
-/// Add roles to user
-///
-/// Adds one or more roles to an existing user account.
-pub async fn add_roles_to_user(
-    userid: web::Path<String>,
-    roles_to_add: web::Json<HashSet<String>>,
-) -> Result<impl Responder, RBACError> {
-    let userid = userid.into_inner();
-    let roles_to_add = roles_to_add.into_inner();
-
-    if !Users.contains(&userid) {
-        return Err(RBACError::UserDoesNotExist);
-    };
-
-    // find username by userid, for native users, username is userid, for oauth users, we need to look up
-    let username = if let Some(user) = users().get(&userid) {
-        user.username_by_userid()
-    } else {
-        return Err(RBACError::UserDoesNotExist);
-    };
-
-    let mut non_existent_roles = Vec::new();
-
-    // check if the role exists
-    for role in &roles_to_add {
-        if !roles().contains_key(role) {
-            non_existent_roles.push(role.clone());
+        if !non_existent_roles.is_empty() {
+            return Err(RBACError::RolesDoNotExist(non_existent_roles));
         }
-    }
-
-    if !non_existent_roles.is_empty() {
-        return Err(RBACError::RolesDoNotExist(non_existent_roles));
-    }
-
-    // update parseable.json first
-    let mut metadata = get_metadata().await?;
-    if let Some(user) = metadata
-        .users
-        .iter_mut()
-        .find(|user| user.userid() == userid)
-    {
-        user.roles.extend(roles_to_add.clone());
-    } else {
-        // should be unreachable given state is always consistent
-        return Err(RBACError::UserDoesNotExist);
-    }
-
-    put_metadata(&metadata).await?;
-    // update in mem table
-    Users.add_roles(&userid.clone(), roles_to_add);
-
-    Ok(HttpResponse::Ok().json(format!("Roles updated successfully for {username}")))
-}
-}
-
-remove_user_roles! {
-/// Remove roles from user
-///
-/// Removes one or more roles from an existing user account.
-pub async fn remove_roles_from_user(
-    userid: web::Path<String>,
-    roles_to_remove: web::Json<HashSet<String>>,
-) -> Result<impl Responder, RBACError> {
-    let userid = userid.into_inner();
-    let roles_to_remove = roles_to_remove.into_inner();
-
-    if !Users.contains(&userid) {
-        return Err(RBACError::UserDoesNotExist);
-    };
-
-    // find username by userid, for native users, username is userid, for oauth users, we need to look up
-    let username = if let Some(user) = users().get(&userid) {
-        user.username_by_userid()
-    } else {
-        return Err(RBACError::UserDoesNotExist);
-    };
-
-    let mut non_existent_roles = Vec::new();
-
-    // check if the role exists
-    for role in &roles_to_remove {
-        if !roles().contains_key(role) {
-            non_existent_roles.push(role.clone());
+        let _guard = UPDATE_LOCK.lock().await;
+        if Users.contains(&username)
+            || metadata.users.iter().any(|user| match &user.ty {
+                UserType::Native(basic) => basic.username == username,
+                UserType::OAuth(_) => false, // OAuth users should be created differently
+            })
+        {
+            return Err(RBACError::UserExists(username));
         }
+
+        let (user, password) = user::User::new_basic(username.clone());
+
+        metadata.users.push(user.clone());
+
+        put_metadata(&metadata).await?;
+        let created_role = user_roles.clone();
+        Users.put_user(user.clone());
+        if !created_role.is_empty() {
+            add_roles_to_user(
+                web::Path::<String>::from(username.clone()),
+                web::Json(created_role),
+            )
+            .await?;
+        }
+
+        Ok(password)
     }
-
-    if !non_existent_roles.is_empty() {
-        return Err(RBACError::RolesDoNotExist(non_existent_roles));
-    }
-
-    // check for role not present with user
-    let user_roles: HashSet<String> = HashSet::from_iter(Users.get_role(&userid));
-    let roles_not_with_user: HashSet<String> =
-        HashSet::from_iter(roles_to_remove.difference(&user_roles).cloned());
-    if !roles_not_with_user.is_empty() {
-        return Err(RBACError::RolesNotAssigned(Vec::from_iter(
-            roles_not_with_user,
-        )));
-    }
-
-    // update parseable.json first
-    let mut metadata = get_metadata().await?;
-    if let Some(user) = metadata
-        .users
-        .iter_mut()
-        .find(|user| user.userid() == userid)
-    {
-        let diff: HashSet<String> =
-            HashSet::from_iter(user.roles.difference(&roles_to_remove).cloned());
-        user.roles = diff;
-    } else {
-        // should be unreachable given state is always consistent
-        return Err(RBACError::UserDoesNotExist);
-    }
-
-    put_metadata(&metadata).await?;
-    // update in mem table
-    Users.remove_roles(&userid.clone(), roles_to_remove);
-
-    Ok(HttpResponse::Ok().json(format!("Roles updated successfully for {username}")))
 }
+
+doc_reset_user_password! {
+    /// Generate new password
+    ///
+    /// Generates and returns a new password for an existing user.
+    pub async fn post_gen_password(username: web::Path<String>) -> Result<impl Responder, RBACError> {
+        let username = username.into_inner();
+        let mut new_password = String::default();
+        let mut new_hash = String::default();
+        let mut metadata = get_metadata().await?;
+
+        let _guard = UPDATE_LOCK.lock().await;
+        let user::PassCode { password, hash } = user::Basic::gen_new_password();
+        new_password.clone_from(&password);
+        new_hash.clone_from(&hash);
+        if let Some(user) = metadata
+            .users
+            .iter_mut()
+            .filter_map(|user| match user.ty {
+                user::UserType::Native(ref mut user) => Some(user),
+                _ => None,
+            })
+            .find(|user| user.username == username)
+        {
+            user.password_hash.clone_from(&hash);
+        } else {
+            return Err(RBACError::UserDoesNotExist);
+        }
+        put_metadata(&metadata).await?;
+        Users.change_password_hash(&username, &new_hash);
+
+        Ok(new_password)
+    }
+}
+
+doc_get_user_roles! {
+    /// Get user roles
+    ///
+    /// Returns all roles assigned to a user, both directly and through group memberships.
+    pub async fn get_role(userid: web::Path<String>) -> Result<impl Responder, RBACError> {
+        let userid = userid.into_inner();
+        if !Users.contains(&userid) {
+            return Err(RBACError::UserDoesNotExist);
+        };
+        let direct_roles: HashMap<String, Vec<DefaultPrivilege>> = Users
+            .get_role(&userid)
+            .iter()
+            .filter_map(|role_name| {
+                roles()
+                    .get(role_name)
+                    .map(|role| (role_name.to_owned(), role.clone()))
+            })
+            .collect();
+
+        let mut group_roles: HashMap<String, HashMap<String, Vec<DefaultPrivilege>>> = HashMap::new();
+        // user might be part of some user groups, fetch the roles from there as well
+        for user_group in Users.get_user_groups(&userid) {
+            if let Some(group) = read_user_groups().get(&user_group) {
+                let ug_roles: HashMap<String, Vec<DefaultPrivilege>> = group
+                    .roles
+                    .iter()
+                    .filter_map(|role_name| {
+                        roles()
+                            .get(role_name)
+                            .map(|role| (role_name.to_owned(), role.clone()))
+                    })
+                    .collect();
+                group_roles.insert(group.name.clone(), ug_roles);
+            }
+        }
+        let res = RolesResponse {
+            direct_roles,
+            group_roles,
+        };
+        Ok(web::Json(res))
+    }
+}
+
+doc_delete_user! {
+    /// Delete user
+    ///
+    /// Permanently deletes a user account. User must not be a member of any user groups.
+    pub async fn delete_user(userid: web::Path<String>) -> Result<impl Responder, RBACError> {
+        let userid = userid.into_inner();
+        let _guard = UPDATE_LOCK.lock().await;
+        // if user is a part of any groups then don't allow deletion
+        if !Users.get_user_groups(&userid).is_empty() {
+            return Err(RBACError::InvalidDeletionRequest(format!(
+                "User: {userid} should not be a part of any groups"
+            )));
+        }
+        // fail this request if the user does not exists
+        if !Users.contains(&userid) {
+            return Err(RBACError::UserDoesNotExist);
+        };
+
+        // find username by userid, for native users, username is userid, for oauth users, we need to look up
+        let username = if let Some(user) = users().get(&userid) {
+            user.username_by_userid()
+        } else {
+            return Err(RBACError::UserDoesNotExist);
+        };
+
+        // delete from parseable.json first
+        let mut metadata = get_metadata().await?;
+        metadata.users.retain(|user| user.userid() != userid);
+        put_metadata(&metadata).await?;
+
+        // update in mem table
+        Users.delete_user(&userid);
+        Ok(HttpResponse::Ok().json(format!("deleted user: {username}")))
+    }
+}
+
+doc_add_user_roles! {
+    /// Add roles to user
+    ///
+    /// Adds one or more roles to an existing user account.
+    pub async fn add_roles_to_user(
+        userid: web::Path<String>,
+        roles_to_add: web::Json<HashSet<String>>,
+    ) -> Result<impl Responder, RBACError> {
+        let userid = userid.into_inner();
+        let roles_to_add = roles_to_add.into_inner();
+
+        if !Users.contains(&userid) {
+            return Err(RBACError::UserDoesNotExist);
+        };
+
+        // find username by userid, for native users, username is userid, for oauth users, we need to look up
+        let username = if let Some(user) = users().get(&userid) {
+            user.username_by_userid()
+        } else {
+            return Err(RBACError::UserDoesNotExist);
+        };
+
+        let mut non_existent_roles = Vec::new();
+
+        // check if the role exists
+        for role in &roles_to_add {
+            if !roles().contains_key(role) {
+                non_existent_roles.push(role.clone());
+            }
+        }
+
+        if !non_existent_roles.is_empty() {
+            return Err(RBACError::RolesDoNotExist(non_existent_roles));
+        }
+
+        // update parseable.json first
+        let mut metadata = get_metadata().await?;
+        if let Some(user) = metadata
+            .users
+            .iter_mut()
+            .find(|user| user.userid() == userid)
+        {
+            user.roles.extend(roles_to_add.clone());
+        } else {
+            // should be unreachable given state is always consistent
+            return Err(RBACError::UserDoesNotExist);
+        }
+
+        put_metadata(&metadata).await?;
+        // update in mem table
+        Users.add_roles(&userid.clone(), roles_to_add);
+
+        Ok(HttpResponse::Ok().json(format!("Roles updated successfully for {username}")))
+    }
+}
+
+doc_remove_user_roles! {
+    /// Remove roles from user
+    ///
+    /// Removes one or more roles from an existing user account.
+    pub async fn remove_roles_from_user(
+        userid: web::Path<String>,
+        roles_to_remove: web::Json<HashSet<String>>,
+    ) -> Result<impl Responder, RBACError> {
+        let userid = userid.into_inner();
+        let roles_to_remove = roles_to_remove.into_inner();
+
+        if !Users.contains(&userid) {
+            return Err(RBACError::UserDoesNotExist);
+        };
+
+        // find username by userid, for native users, username is userid, for oauth users, we need to look up
+        let username = if let Some(user) = users().get(&userid) {
+            user.username_by_userid()
+        } else {
+            return Err(RBACError::UserDoesNotExist);
+        };
+
+        let mut non_existent_roles = Vec::new();
+
+        // check if the role exists
+        for role in &roles_to_remove {
+            if !roles().contains_key(role) {
+                non_existent_roles.push(role.clone());
+            }
+        }
+
+        if !non_existent_roles.is_empty() {
+            return Err(RBACError::RolesDoNotExist(non_existent_roles));
+        }
+
+        // check for role not present with user
+        let user_roles: HashSet<String> = HashSet::from_iter(Users.get_role(&userid));
+        let roles_not_with_user: HashSet<String> =
+            HashSet::from_iter(roles_to_remove.difference(&user_roles).cloned());
+        if !roles_not_with_user.is_empty() {
+            return Err(RBACError::RolesNotAssigned(Vec::from_iter(
+                roles_not_with_user,
+            )));
+        }
+
+        // update parseable.json first
+        let mut metadata = get_metadata().await?;
+        if let Some(user) = metadata
+            .users
+            .iter_mut()
+            .find(|user| user.userid() == userid)
+        {
+            let diff: HashSet<String> =
+                HashSet::from_iter(user.roles.difference(&roles_to_remove).cloned());
+            user.roles = diff;
+        } else {
+            // should be unreachable given state is always consistent
+            return Err(RBACError::UserDoesNotExist);
+        }
+
+        put_metadata(&metadata).await?;
+        // update in mem table
+        Users.remove_roles(&userid.clone(), roles_to_remove);
+
+        Ok(HttpResponse::Ok().json(format!("Roles updated successfully for {username}")))
+    }
 }
 
 #[derive(Debug, Serialize)]

@@ -17,7 +17,7 @@
  */
 
 #[macro_export]
-macro_rules! create_target {
+macro_rules! doc_create_target {
     ($($item:tt)*) => {
         #[utoipa::path(
             post,
@@ -40,7 +40,7 @@ macro_rules! create_target {
 }
 
 #[macro_export]
-macro_rules! list_targets {
+macro_rules! doc_list_targets {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -61,7 +61,7 @@ macro_rules! list_targets {
 }
 
 #[macro_export]
-macro_rules! get_target_by_id {
+macro_rules! doc_get_target_by_id {
     ($($item:tt)*) => {
         #[utoipa::path(
             get,
@@ -86,7 +86,7 @@ macro_rules! get_target_by_id {
 }
 
 #[macro_export]
-macro_rules! update_target {
+macro_rules! doc_update_target {
     ($($item:tt)*) => {
         #[utoipa::path(
             put,
@@ -113,7 +113,7 @@ macro_rules! update_target {
 }
 
 #[macro_export]
-macro_rules! delete_target {
+macro_rules! doc_delete_target {
     ($($item:tt)*) => {
         #[utoipa::path(
             delete,

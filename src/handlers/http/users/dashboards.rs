@@ -19,12 +19,10 @@
 use std::collections::HashMap;
 
 use crate::{
-    create_dashboard, get_dashboard_by_id,
+    doc_create_dashboard, doc_get_dashboard_by_id, doc_list_dashboards, doc_update_dashboard,
     handlers::http::rbac::RBACError,
-    list_dashboards,
     metastore::MetastoreError,
     storage::ObjectStorageError,
-    update_dashboard,
     users::dashboards::{DASHBOARDS, Dashboard, Tile, validate_dashboard_id},
     utils::{get_hash, get_user_from_request, is_admin},
 };
@@ -36,177 +34,177 @@ use actix_web::{
 use http::StatusCode;
 use serde_json::Error as SerdeError;
 
-list_dashboards! {
-/// List dashboards
-///
-/// Returns dashboards accessible by the current user.
-pub async fn list_dashboards(req: HttpRequest) -> Result<impl Responder, DashboardError> {
-    let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
-        .map_err(|_| DashboardError::InvalidQueryParameter)?;
-    let mut dashboard_limit = 0;
-    if !query_map.is_empty() {
-        if let Some(limit) = query_map.get("limit") {
-            if let Ok(parsed_limit) = limit.parse::<usize>() {
-                dashboard_limit = parsed_limit;
-            } else {
-                return Err(DashboardError::Metadata("Invalid limit value"));
+doc_list_dashboards! {
+    /// List dashboards
+    ///
+    /// Returns dashboards accessible by the current user.
+    pub async fn list_dashboards(req: HttpRequest) -> Result<impl Responder, DashboardError> {
+        let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
+            .map_err(|_| DashboardError::InvalidQueryParameter)?;
+        let mut dashboard_limit = 0;
+        if !query_map.is_empty() {
+            if let Some(limit) = query_map.get("limit") {
+                if let Ok(parsed_limit) = limit.parse::<usize>() {
+                    dashboard_limit = parsed_limit;
+                } else {
+                    return Err(DashboardError::Metadata("Invalid limit value"));
+                }
             }
-        }
 
-        if let Some(tags) = query_map.get("tags") {
-            let tags: Vec<String> = tags
-                .split(',')
-                .map(|s| s.trim().to_string())
-                .filter(|s| !s.is_empty())
-                .collect();
-            if tags.is_empty() {
-                return Err(DashboardError::Metadata("Tags cannot be empty"));
+            if let Some(tags) = query_map.get("tags") {
+                let tags: Vec<String> = tags
+                    .split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect();
+                if tags.is_empty() {
+                    return Err(DashboardError::Metadata("Tags cannot be empty"));
+                }
+                let dashboards = DASHBOARDS.list_dashboards_by_tags(tags).await;
+                let dashboard_summaries = dashboards
+                    .iter()
+                    .map(|dashboard| dashboard.to_summary())
+                    .collect::<Vec<_>>();
+                return Ok((web::Json(dashboard_summaries), StatusCode::OK));
             }
-            let dashboards = DASHBOARDS.list_dashboards_by_tags(tags).await;
-            let dashboard_summaries = dashboards
-                .iter()
-                .map(|dashboard| dashboard.to_summary())
-                .collect::<Vec<_>>();
-            return Ok((web::Json(dashboard_summaries), StatusCode::OK));
         }
+        let dashboards = DASHBOARDS.list_dashboards(dashboard_limit).await;
+        let dashboard_summaries = dashboards
+            .iter()
+            .map(|dashboard| dashboard.to_summary())
+            .collect::<Vec<_>>();
+
+        Ok((web::Json(dashboard_summaries), StatusCode::OK))
     }
-    let dashboards = DASHBOARDS.list_dashboards(dashboard_limit).await;
-    let dashboard_summaries = dashboards
-        .iter()
-        .map(|dashboard| dashboard.to_summary())
-        .collect::<Vec<_>>();
-
-    Ok((web::Json(dashboard_summaries), StatusCode::OK))
-}
 }
 
-get_dashboard_by_id! {
-/// Get dashboard
-///
-/// Retrieves a specific dashboard by ID.
-pub async fn get_dashboard(dashboard_id: Path<String>) -> Result<impl Responder, DashboardError> {
-    let dashboard_id = validate_dashboard_id(dashboard_id.into_inner())?;
+doc_get_dashboard_by_id! {
+    /// Get dashboard
+    ///
+    /// Retrieves a specific dashboard by ID.
+    pub async fn get_dashboard(dashboard_id: Path<String>) -> Result<impl Responder, DashboardError> {
+        let dashboard_id = validate_dashboard_id(dashboard_id.into_inner())?;
 
-    let dashboard = DASHBOARDS
-        .get_dashboard(dashboard_id)
-        .await
-        .ok_or_else(|| DashboardError::Metadata("Dashboard does not exist"))?;
+        let dashboard = DASHBOARDS
+            .get_dashboard(dashboard_id)
+            .await
+            .ok_or_else(|| DashboardError::Metadata("Dashboard does not exist"))?;
 
-    Ok((web::Json(dashboard), StatusCode::OK))
-}
-}
-
-create_dashboard! {
-/// Create dashboard
-///
-/// Creates a new dashboard with specified configuration.
-pub async fn create_dashboard(
-    req: HttpRequest,
-    Json(mut dashboard): Json<Dashboard>,
-) -> Result<impl Responder, DashboardError> {
-    if dashboard.title.is_empty() {
-        return Err(DashboardError::Metadata("Title must be provided"));
+        Ok((web::Json(dashboard), StatusCode::OK))
     }
-
-    let user_id = get_hash(&get_user_from_request(&req)?);
-
-    DASHBOARDS.create(&user_id, &mut dashboard).await?;
-    Ok((web::Json(dashboard), StatusCode::OK))
-}
 }
 
-update_dashboard! {
-/// Update dashboard
-///
-/// Updates an existing dashboard's configuration.
-pub async fn update_dashboard(
-    req: HttpRequest,
-    dashboard_id: Path<String>,
-    dashboard: Option<Json<Dashboard>>,
-) -> Result<impl Responder, DashboardError> {
-    let user_id = get_hash(&get_user_from_request(&req)?);
-    let dashboard_id = validate_dashboard_id(dashboard_id.into_inner())?;
-    let is_admin = is_admin(&req).map_err(|e| DashboardError::Custom(e.to_string()))?;
+doc_create_dashboard! {
+    /// Create dashboard
+    ///
+    /// Creates a new dashboard with specified configuration.
+    pub async fn create_dashboard(
+        req: HttpRequest,
+        Json(mut dashboard): Json<Dashboard>,
+    ) -> Result<impl Responder, DashboardError> {
+        if dashboard.title.is_empty() {
+            return Err(DashboardError::Metadata("Title must be provided"));
+        }
 
-    let mut existing_dashboard = DASHBOARDS
-        .get_dashboard_by_user(dashboard_id, &user_id, is_admin)
-        .await
-        .ok_or(DashboardError::Metadata(
-            "Dashboard does not exist or user is not authorized",
-        ))?;
+        let user_id = get_hash(&get_user_from_request(&req)?);
 
-    let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
-        .map_err(|_| DashboardError::InvalidQueryParameter)?;
-
-    // Validate: either query params OR body, not both
-    let has_query_params = !query_map.is_empty();
-    let has_body_update = dashboard
-        .as_ref()
-        .is_some_and(|d| d.title != existing_dashboard.title || d.tiles.is_some());
-
-    if has_query_params && has_body_update {
-        return Err(DashboardError::Metadata(
-            "Cannot use both query parameters and request body for updates",
-        ));
+        DASHBOARDS.create(&user_id, &mut dashboard).await?;
+        Ok((web::Json(dashboard), StatusCode::OK))
     }
-
-    let mut final_dashboard = if has_query_params {
-        // Apply partial updates from query parameters
-        if let Some(is_favorite) = query_map.get("isFavorite") {
-            existing_dashboard.is_favorite = Some(is_favorite == "true");
-        }
-        if let Some(tags) = query_map.get("tags") {
-            let parsed_tags: Vec<String> = tags
-                .split(',')
-                .map(|s| s.trim())
-                .filter(|s| !s.is_empty())
-                .map(|s| s.to_string())
-                .collect();
-            existing_dashboard.tags = if parsed_tags.is_empty() {
-                None
-            } else {
-                Some(parsed_tags)
-            };
-        }
-        if let Some(rename_to) = query_map.get("renameTo") {
-            let trimmed = rename_to.trim();
-            if trimmed.is_empty() {
-                return Err(DashboardError::Metadata("Rename to cannot be empty"));
-            }
-            existing_dashboard.title = trimmed.to_string();
-        }
-        existing_dashboard
-    } else {
-        let dashboard = dashboard
-            .ok_or(DashboardError::Metadata("Request body is required"))?
-            .into_inner();
-        if let Some(tiles) = &dashboard.tiles {
-            if tiles.iter().any(|tile| tile.tile_id.is_nil()) {
-                return Err(DashboardError::Metadata("Tile ID must be provided"));
-            }
-
-            // Check if tile_id are unique
-            let unique_tiles: Vec<_> = tiles
-                .iter()
-                .map(|tile| tile.tile_id)
-                .collect::<std::collections::HashSet<_>>()
-                .into_iter()
-                .collect();
-
-            if unique_tiles.len() != tiles.len() {
-                return Err(DashboardError::Metadata("Tile IDs must be unique"));
-            }
-        }
-
-        dashboard
-    };
-
-    DASHBOARDS
-        .update(&user_id, dashboard_id, &mut final_dashboard)
-        .await?;
-
-    Ok((web::Json(final_dashboard), StatusCode::OK))
 }
+
+doc_update_dashboard! {
+    /// Update dashboard
+    ///
+    /// Updates an existing dashboard's configuration.
+    pub async fn update_dashboard(
+        req: HttpRequest,
+        dashboard_id: Path<String>,
+        dashboard: Option<Json<Dashboard>>,
+    ) -> Result<impl Responder, DashboardError> {
+        let user_id = get_hash(&get_user_from_request(&req)?);
+        let dashboard_id = validate_dashboard_id(dashboard_id.into_inner())?;
+        let is_admin = is_admin(&req).map_err(|e| DashboardError::Custom(e.to_string()))?;
+
+        let mut existing_dashboard = DASHBOARDS
+            .get_dashboard_by_user(dashboard_id, &user_id, is_admin)
+            .await
+            .ok_or(DashboardError::Metadata(
+                "Dashboard does not exist or user is not authorized",
+            ))?;
+
+        let query_map = web::Query::<HashMap<String, String>>::from_query(req.query_string())
+            .map_err(|_| DashboardError::InvalidQueryParameter)?;
+
+        // Validate: either query params OR body, not both
+        let has_query_params = !query_map.is_empty();
+        let has_body_update = dashboard
+            .as_ref()
+            .is_some_and(|d| d.title != existing_dashboard.title || d.tiles.is_some());
+
+        if has_query_params && has_body_update {
+            return Err(DashboardError::Metadata(
+                "Cannot use both query parameters and request body for updates",
+            ));
+        }
+
+        let mut final_dashboard = if has_query_params {
+            // Apply partial updates from query parameters
+            if let Some(is_favorite) = query_map.get("isFavorite") {
+                existing_dashboard.is_favorite = Some(is_favorite == "true");
+            }
+            if let Some(tags) = query_map.get("tags") {
+                let parsed_tags: Vec<String> = tags
+                    .split(',')
+                    .map(|s| s.trim())
+                    .filter(|s| !s.is_empty())
+                    .map(|s| s.to_string())
+                    .collect();
+                existing_dashboard.tags = if parsed_tags.is_empty() {
+                    None
+                } else {
+                    Some(parsed_tags)
+                };
+            }
+            if let Some(rename_to) = query_map.get("renameTo") {
+                let trimmed = rename_to.trim();
+                if trimmed.is_empty() {
+                    return Err(DashboardError::Metadata("Rename to cannot be empty"));
+                }
+                existing_dashboard.title = trimmed.to_string();
+            }
+            existing_dashboard
+        } else {
+            let dashboard = dashboard
+                .ok_or(DashboardError::Metadata("Request body is required"))?
+                .into_inner();
+            if let Some(tiles) = &dashboard.tiles {
+                if tiles.iter().any(|tile| tile.tile_id.is_nil()) {
+                    return Err(DashboardError::Metadata("Tile ID must be provided"));
+                }
+
+                // Check if tile_id are unique
+                let unique_tiles: Vec<_> = tiles
+                    .iter()
+                    .map(|tile| tile.tile_id)
+                    .collect::<std::collections::HashSet<_>>()
+                    .into_iter()
+                    .collect();
+
+                if unique_tiles.len() != tiles.len() {
+                    return Err(DashboardError::Metadata("Tile IDs must be unique"));
+                }
+            }
+
+            dashboard
+        };
+
+        DASHBOARDS
+            .update(&user_id, dashboard_id, &mut final_dashboard)
+            .await?;
+
+        Ok((web::Json(final_dashboard), StatusCode::OK))
+    }
 }
 
 pub async fn delete_dashboard(
