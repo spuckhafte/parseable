@@ -10,24 +10,9 @@ use crate::alerts::{
     target::{TARGETS, Target},
 };
 
-/// Create target
-///
-/// Creates a new notification target for alerts.
-#[utoipa::path(
-    post,
-    path = "/api/v1/targets",
-    tag = "targets",
-    summary = "Create target",
-    description = "Creates a new notification target (webhook, Slack, email, etc.) that can be used by alerts. Automatically generates a unique ID.",
-    request_body = Target,
-    responses(
-        (status = 200, description = "Target created successfully", body = Target),
-        (status = 400, description = "Invalid target configuration")
-    ),
-    security(
-        ("authorization" = [])
-    )
-)]
+use crate::{create_target, delete_target, get_target_by_id, list_targets, update_target};
+
+create_target! {
 pub async fn post(
     _req: HttpRequest,
     Json(target): Json<Target>,
@@ -39,23 +24,9 @@ pub async fn post(
     // Ok(web::Json(target.mask()))
     Ok(web::Json(target))
 }
+}
 
-/// List targets
-///
-/// Returns all configured notification targets.
-#[utoipa::path(
-    get,
-    path = "/api/v1/targets",
-    tag = "targets",
-    summary = "List targets",
-    description = "Retrieves all notification targets configured in the system.",
-    responses(
-        (status = 200, description = "List of targets", body = Vec<Target>)
-    ),
-    security(
-        ("authorization" = [])
-    )
-)]
+list_targets! {
 pub async fn list(_req: HttpRequest) -> Result<impl Responder, AlertError> {
     // add to the map
     let list = TARGETS
@@ -67,27 +38,9 @@ pub async fn list(_req: HttpRequest) -> Result<impl Responder, AlertError> {
 
     Ok(web::Json(list))
 }
+}
 
-/// Get target
-///
-/// Retrieves a specific target by ID.
-#[utoipa::path(
-    get,
-    path = "/api/v1/targets/{target_id}",
-    tag = "targets",
-    summary = "Get target",
-    description = "Returns complete configuration for the specified notification target.",
-    params(
-        ("target_id" = String, Path, description = "Target ID (ULID format)")
-    ),
-    responses(
-        (status = 200, description = "Target details", body = Target),
-        (status = 404, description = "Target not found")
-    ),
-    security(
-        ("authorization" = [])
-    )
-)]
+get_target_by_id! {
 pub async fn get(_req: HttpRequest, target_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
     let target_id = target_id.into_inner();
 
@@ -96,29 +49,9 @@ pub async fn get(_req: HttpRequest, target_id: Path<Ulid>) -> Result<impl Respon
     // Ok(web::Json(target.mask()))
     Ok(web::Json(target))
 }
+}
 
-/// Update target
-///
-/// Updates an existing target's configuration.
-#[utoipa::path(
-    put,
-    path = "/api/v1/targets/{target_id}",
-    tag = "targets",
-    summary = "Update target",
-    description = "Modifies notification target configuration. Updates both storage and in-memory representation.",
-    params(
-        ("target_id" = String, Path, description = "Target ID (ULID format)")
-    ),
-    request_body = Target,
-    responses(
-        (status = 200, description = "Target updated successfully", body = Target),
-        (status = 400, description = "Invalid target configuration"),
-        (status = 404, description = "Target not found")
-    ),
-    security(
-        ("authorization" = [])
-    )
-)]
+update_target! {
 pub async fn update(
     _req: HttpRequest,
     target_id: Path<Ulid>,
@@ -146,27 +79,9 @@ pub async fn update(
     // Ok(web::Json(target.mask()))
     Ok(web::Json(target))
 }
+}
 
-/// Delete target
-///
-/// Permanently deletes a notification target.
-#[utoipa::path(
-    delete,
-    path = "/api/v1/targets/{target_id}",
-    tag = "targets",
-    summary = "Delete target",
-    description = "Removes a notification target from the system. Alerts using this target will need to be updated.",
-    params(
-        ("target_id" = String, Path, description = "Target ID (ULID format)")
-    ),
-    responses(
-        (status = 200, description = "Target deleted successfully", body = Target),
-        (status = 404, description = "Target not found")
-    ),
-    security(
-        ("authorization" = [])
-    )
-)]
+delete_target! {
 pub async fn delete(
     _req: HttpRequest,
     target_id: Path<Ulid>,
@@ -177,4 +92,5 @@ pub async fn delete(
 
     // Ok(web::Json(target.mask()))
     Ok(web::Json(target))
+}
 }

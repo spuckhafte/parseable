@@ -35,6 +35,10 @@ pub mod docs_rbac;
 pub mod docs_query;
 #[macro_use]
 pub mod docs_ingest;
+#[macro_use]
+pub mod docs_targets;
+#[macro_use]
+pub mod docs_correlation;
 
 use utoipa;
 use utoipa::Modify;
@@ -132,6 +136,18 @@ impl Modify for SecurityAddon {
         crate::handlers::http::users::filters::post,
         crate::handlers::http::users::filters::update,
         crate::handlers::http::users::filters::delete,
+        // Targets
+        crate::handlers::http::targets::post,
+        crate::handlers::http::targets::list,
+        crate::handlers::http::targets::get,
+        crate::handlers::http::targets::update,
+        crate::handlers::http::targets::delete,
+        // Correlations
+        crate::handlers::http::correlation::list,
+        crate::handlers::http::correlation::get,
+        crate::handlers::http::correlation::post,
+        crate::handlers::http::correlation::modify,
+        crate::handlers::http::correlation::delete,
     ),
     modifiers(&SecurityAddon),
     tags(
@@ -143,6 +159,8 @@ impl Modify for SecurityAddon {
         (name = "alerts", description = "Alert management - configure and monitor alerts"),
         (name = "dashboards", description = "Dashboard management - create and manage dashboards"),
         (name = "filters", description = "Filter management - create and manage saved filters"),
+        (name = "targets", description = "Notification target management - configure webhooks, Slack, email targets for alerts"),
+        (name = "correlations", description = "Correlation management - create and manage multi-stream correlations"),
     ),
     info(
         title = "Parseable Server API",
