@@ -13,6 +13,9 @@ use crate::alerts::{
 use crate::{create_target, delete_target, get_target_by_id, list_targets, update_target};
 
 create_target! {
+/// Create target
+///
+/// Creates a new notification target for alerts.
 pub async fn post(
     _req: HttpRequest,
     Json(target): Json<Target>,
@@ -27,6 +30,9 @@ pub async fn post(
 }
 
 list_targets! {
+/// List targets
+///
+/// Returns all configured notification targets.
 pub async fn list(_req: HttpRequest) -> Result<impl Responder, AlertError> {
     // add to the map
     let list = TARGETS
@@ -41,6 +47,9 @@ pub async fn list(_req: HttpRequest) -> Result<impl Responder, AlertError> {
 }
 
 get_target_by_id! {
+/// Get target
+///
+/// Retrieves a specific target by ID.
 pub async fn get(_req: HttpRequest, target_id: Path<Ulid>) -> Result<impl Responder, AlertError> {
     let target_id = target_id.into_inner();
 
@@ -52,6 +61,9 @@ pub async fn get(_req: HttpRequest, target_id: Path<Ulid>) -> Result<impl Respon
 }
 
 update_target! {
+/// Update target
+///
+/// Updates an existing target's configuration.
 pub async fn update(
     _req: HttpRequest,
     target_id: Path<Ulid>,
@@ -82,6 +94,9 @@ pub async fn update(
 }
 
 delete_target! {
+/// Delete target
+///
+/// Permanently deletes a notification target.
 pub async fn delete(
     _req: HttpRequest,
     target_id: Path<Ulid>,

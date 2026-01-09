@@ -33,6 +33,9 @@ use crate::{
 };
 
 list_correlations! {
+/// List correlations
+///
+/// Returns all correlations accessible by the current user.
 pub async fn list(req: HttpRequest) -> Result<impl Responder, CorrelationError> {
     let session_key = extract_session_key_from_req(&req)
         .map_err(|err| CorrelationError::AnyhowError(Error::msg(err.to_string())))?;
@@ -44,6 +47,9 @@ pub async fn list(req: HttpRequest) -> Result<impl Responder, CorrelationError> 
 }
 
 get_correlation_by_id! {
+/// Get correlation
+///
+/// Retrieves a specific correlation by ID.
 pub async fn get(
     req: HttpRequest,
     correlation_id: Path<String>,
@@ -69,6 +75,9 @@ pub async fn get(
 }
 
 create_correlation! {
+/// Create correlation
+///
+/// Creates a new correlation between multiple streams.
 pub async fn post(
     req: HttpRequest,
     Json(mut correlation): Json<CorrelationConfig>,
@@ -87,6 +96,9 @@ pub async fn post(
 }
 
 modify_correlation! {
+/// Modify correlation
+///
+/// Updates an existing correlation's configuration.
 pub async fn modify(
     req: HttpRequest,
     correlation_id: Path<String>,
@@ -107,6 +119,9 @@ pub async fn modify(
 }
 
 delete_correlation! {
+/// Delete correlation
+///
+/// Permanently deletes a correlation.
 pub async fn delete(
     req: HttpRequest,
     correlation_id: Path<String>,
